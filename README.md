@@ -1,6 +1,5 @@
 ## pbi-docs — Power BI Documentation Generator
 
-![pbi-docs Header](docs/images/Header.png)
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -40,10 +39,10 @@ cd pbi-docs
 pip install -e .
 
 # 3. Generate documentation for a .pbit file
-pbi-docs --input "data/pbit/Life expectancy v202009.pbit"
+pbi-docs --input "data/pbit/my-model.pbit"
 
 # 4. Review the results (Windows PowerShell)
-Get-Content "output/Life expectancy v202009.pbit/model_documentation.md"
+Get-Content "output/my-model.pbit/model_documentation.md"
 ```
 
 **Result:** Complete documentation of your Power BI model in seconds. 4 files are generated in the output folder.
@@ -63,7 +62,7 @@ Get-Content "output/Life expectancy v202009.pbit/model_documentation.md"
 
 ## Minimal Reproducible Example
 
-> **Note:** The sample files used in this documentation (e.g., "Life expectancy v202009", "Human Resources Sample PBIX") are available from the [Microsoft Power BI Desktop Samples repository](https://github.com/microsoft/powerbi-desktop-samples). These are official sample files provided by Microsoft for learning and testing purposes.
+> **Note:** The sample files used in this documentation are available from the [Microsoft Power BI Desktop Samples repository](https://github.com/microsoft/powerbi-desktop-samples). These are official sample files provided by Microsoft for learning and testing purposes.
 
 ### Step 1: Prepare a .pbit file
 
@@ -77,8 +76,8 @@ Alternatively, you can download sample `.pbit` files from the [Microsoft Power B
 ### Step 2: Run the extractor
 
 ```powershell
-# Process the included example file
-pbi-docs --input "data/pbit/Life expectancy v202009.pbit"
+# Process your .pbit file
+pbi-docs --input "data/pbit/my-model.pbit"
 ```
 
 ### Step 3: Verify the output
@@ -86,7 +85,7 @@ pbi-docs --input "data/pbit/Life expectancy v202009.pbit"
 The command generates a folder with the file name in `output/`:
 
 ```
-output/Life expectancy v202009.pbit/
+output/my-model.pbit/
 ├── metadata.json              # Structured model metadata
 ├── model_documentation.md     # Human-readable documentation
 ├── agent_context.json        # LLM-optimized context
@@ -99,12 +98,12 @@ output/Life expectancy v202009.pbit/
 
 ```powershell
 # View the model summary
-Get-Content "output/Life expectancy v202009.pbit/model_documentation.md" | Select-Object -First 15
+Get-Content "output/my-model.pbit/model_documentation.md" | Select-Object -First 15
 ```
 
 **Output:**
 ```markdown
-# Life expectancy v202009 - Power BI Data Model
+# my-model - Power BI Data Model
 
 **Generated:** 2025-12-22 14:23:29
 
@@ -122,7 +121,7 @@ Get-Content "output/Life expectancy v202009.pbit/model_documentation.md" | Selec
 import json
 
 # Load context for AI analysis
-with open("output/Life expectancy v202009.pbit/agent_context.json", "r", encoding="utf-8") as f:
+with open("output/my-model.pbit/agent_context.json", "r", encoding="utf-8") as f:
     context = json.load(f)
     
 print(f"Model: {context['model_name']}")
@@ -132,7 +131,7 @@ print(f"First measure: {context['key_measures'][0]['name']}")
 
 **Expected output:**
 ```
-Model: Life expectancy v202009
+Model: my-model
 Key measures: 20
 First measure: Revenue Budget
 ```
@@ -214,7 +213,7 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 **Process a single file:**
 ```powershell
-pbi-docs --input "data/pbit/Life expectancy v202009.pbit"
+pbi-docs --input "data/pbit/my-model.pbit"
 ```
 
 **Specify custom output directory:**
@@ -256,14 +255,14 @@ pbi-docs --input "data/pbit/my-model.pbit"
 When running the command, you'll see messages like:
 
 ```
-Processing file: data/pbit/Life expectancy v202009.pbit
+Processing file: data/pbit/my-model.pbit
 Schema extracted successfully: 11 tables
 Metadata processed: 11 tables, 44 measures
-Metadata saved to: output/Life expectancy v202009.pbit/metadata.json
-Documentation saved to: output/Life expectancy v202009.pbit/model_documentation.md
-Agent context saved to: output/Life expectancy v202009.pbit/agent_context.json
-JSONL context saved to: output/Life expectancy v202009.pbit/model_context.jsonl
-Processing completed successfully for: Life expectancy v202009.pbit
+Metadata saved to: output/my-model.pbit/metadata.json
+Documentation saved to: output/my-model.pbit/model_documentation.md
+Agent context saved to: output/my-model.pbit/agent_context.json
+JSONL context saved to: output/my-model.pbit/model_context.jsonl
+Processing completed successfully for: my-model.pbit
 ```
 
 ### Important Notes
@@ -374,10 +373,10 @@ output/
 1. Generate the model documentation (in your preferred language):
 ```powershell
 # English documentation (default)
-pbi-docs --input "data/pbit/Life expectancy v202009.pbit"
+pbi-docs --input "data/pbit/my-model.pbit"
 
 # Spanish documentation
-pbi-docs --input "data/pbit/Life expectancy v202009.pbit" --lang es
+pbi-docs --input "data/pbit/my-model.pbit" --lang es
 ```
 
 2. Upload the `model_documentation.md` file to your favorite AI agent (Claude, GPT-4, etc.)
@@ -391,7 +390,7 @@ pbi-docs --input "data/pbit/Life expectancy v202009.pbit" --lang es
 ```
 User: What revenue measures does this model have?
 
-Agent: The "Life expectancy v202009" model has 11 revenue measures:
+Agent: The "my-model" model has 11 revenue measures:
 - Total Revenue (simple): SUM([Revenue])
 - YTD Revenue (simple): TOTALYTD(SUM([Revenue]),'Date'[Date])
 - Revenue SPLY (medium): CALCULATE([Total Revenue],SAMEPERIODLASTYEAR('Date'[Date]))
@@ -448,7 +447,7 @@ import json
 
 # Load JSONL context to create embeddings
 context_entries = []
-with open("output/Life expectancy v202009.pbit/model_context.jsonl", "r", encoding="utf-8") as f:
+with open("output/my-model.pbit/model_context.jsonl", "r", encoding="utf-8") as f:
     for line in f:
         entity = json.loads(line)
         context_entries.append(entity)
@@ -463,7 +462,7 @@ for entry in context_entries:
 
 **Output example:**
 ```
-Type: model, Title: Model: Life expectancy v202009
+Type: model, Title: Model: my-model
 Type: table, Title: Fact (Hidden)
 Type: measure, Title: Total Revenue (revenue)
   DAX Expression: SUM([Revenue])
@@ -537,32 +536,32 @@ CALCULATE(
 
 ### Verify Installation
 
-Run a quick test with the example file:
+Run a quick test with your .pbit file:
 
 ```powershell
-pbi-docs --input "data/pbit/Life expectancy v202009.pbit"
+pbi-docs --input "data/pbit/my-model.pbit"
 ```
 
 **Expected output:**
 ```
-Processing file: data/pbit/Life expectancy v202009.pbit
+Processing file: data/pbit/my-model.pbit
 Schema extracted successfully: 11 tables
 Metadata processed: 11 tables, 44 measures
-Metadata saved to: output/Life expectancy v202009.pbit/metadata.json
-Documentation saved to: output/Life expectancy v202009.pbit/model_documentation.md
-Agent context saved to: output/Life expectancy v202009.pbit/agent_context.json
-JSONL context saved to: output/Life expectancy v202009.pbit/model_context.jsonl
-Processing completed successfully for: Life expectancy v202009.pbit
+Metadata saved to: output/my-model.pbit/metadata.json
+Documentation saved to: output/my-model.pbit/model_documentation.md
+Agent context saved to: output/my-model.pbit/agent_context.json
+JSONL context saved to: output/my-model.pbit/model_context.jsonl
+Processing completed successfully for: my-model.pbit
 ```
 
 Then verify that the files were generated correctly:
 
 ```powershell
 # List generated files
-Get-ChildItem "output/Life expectancy v202009.pbit/"
+Get-ChildItem "output/my-model.pbit/"
 
 # View a summary of the documentation
-Get-Content "output/Life expectancy v202009.pbit/model_documentation.md" | Select-Object -First 10
+Get-Content "output/my-model.pbit/model_documentation.md" | Select-Object -First 10
 ```
 
 ### Common Installation Issues
@@ -607,10 +606,10 @@ python -m pbi_extractor.cli --input file.pbit
 ## Generated Documentation Example
 
 <details>
-<summary>View complete example of model_documentation.md (Life expectancy v202009)</summary>
+<summary>View complete example of model_documentation.md (my-model)</summary>
 
 ```markdown
-# Life expectancy v202009 - Power BI Data Model
+# my-model - Power BI Data Model
 
 **Generated:** 2025-12-22 14:23:29
 
@@ -746,7 +745,7 @@ Contributions are welcome! If you'd like to contribute:
 
 ## Sample Files
 
-The example files referenced in this documentation (such as "Life expectancy v202009" and "Human Resources Sample PBIX") are official sample files provided by Microsoft. You can find these and other Power BI sample files in the [Microsoft Power BI Desktop Samples repository](https://github.com/microsoft/powerbi-desktop-samples).
+The example files referenced in this documentation are official sample files provided by Microsoft. You can find these and other Power BI sample files in the [Microsoft Power BI Desktop Samples repository](https://github.com/microsoft/powerbi-desktop-samples).
 
 These sample files are excellent for:
 - Testing pbi-docs functionality
