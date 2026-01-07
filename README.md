@@ -32,7 +32,7 @@ No external dependencies. Python-only.
 
 ```powershell
 # 1. Clone the repository
-git clone https://github.com/orosero24/pbi-docs.git
+git clone https://github.com/Osc2405/pbi-docs.git
 cd pbi-docs
 
 # 2. Install the package
@@ -729,7 +729,7 @@ Contributions are welcome! If you'd like to contribute:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-**Bug reports and feature requests:** Please use [GitHub Issues](https://github.com/orosero24/pbi-docs/issues)
+**Bug reports and feature requests:** Please use [GitHub Issues](https://github.com/Osc2405/pbi-docs/issues)
 
 ---
 
@@ -765,9 +765,9 @@ To use these samples:
 
 **Oscar Rosero** - Data Engineer | BI Developer
 
-- 💼 [LinkedIn](https://linkedin.com/in/oscrosero24)
-- 🐙 [GitHub](https://github.com/orosero24)
-- 📧 orosero2405@gmail.com
+-  [LinkedIn](https://www.linkedin.com/in/oscrosero24/)
+-  [GitHub](https://github.com/Osc2405)
+-  orosero2405@gmail.com
 
 Built with ❤️ for the Power BI community.
 
