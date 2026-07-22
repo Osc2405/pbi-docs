@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "pbi-docs": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["-m", "pbi_extractor.mcp_server", "${CLAUDE_PROJECT_DIR:-.}/output/Supply Chain Sample"]
+    }
+  }
+}

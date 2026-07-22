@@ -1,0 +1,22 @@
+table 'Date'
+	isHidden
+
+	column Date
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		sourceColumn: Date
+
+	column Year
+		dataType: int64
+		sourceColumn: Year
+
+	column Month
+		dataType: string
+		sourceColumn: Month
+
+	partition Date-Partition
+		mode: import
+		source
+			type: m
+
+	annotation PBI_ResultType = Table

@@ -1,0 +1,15 @@
+model Model
+	culture: en-US
+
+	relationship Rel_Sales_Date
+		fromColumn: Sales.DateKey
+		toColumn: 'Date'.'Date'
+		fromCardinality: many
+		toCardinality: one
+
+	relationship Rel_Sales_Measures
+		fromColumn: Sales.SalesID
+		toColumn: _Measures.MeasureID
+		fromCardinality: many
+		toCardinality: one
+		isActive: false

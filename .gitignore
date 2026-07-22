@@ -35,6 +35,17 @@ output2/
 Output*/
 Output_*/
 
+# Real PBI project fixtures used for ad-hoc local validation — not test suite
+# dependencies (those live in tests/fixtures/), and real exports can carry
+# personal paths/machine-specific data (.pbi/localSettings.json, cache.abf).
+files_test/
+file_test_2/
+
+# Internal strategy/positioning doc (market analysis, competitive positioning,
+# team recommendations) — not published, kept locally only. Public-facing
+# claims that used to link here were inlined into README.md directly.
+docs/Analisis_Posicionamiento_Comparativa_Plan_Futuro.md
+
 # Old build artifacts (legacy names)
 conectorbi.egg-info/
 *.egg-info/
@@ -55,3 +66,6 @@ build/
 # Environment variables
 .env
 .env.local
+
+# Session status/scratch notes (local only, never versioned)
+NEXT_STEPS.md

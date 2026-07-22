@@ -4,15 +4,21 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pbi-docs"
-version = "0.1.0"
-description = "Power BI documentation generator with AI-ready outputs"
+version = "1.0.0"
+description = "AI context engine for Power BI models: indexed, queryable context for LLM agents (MCP server, CLI, docs), zero dependencies"
 requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [{name = "Oscar Rosero", email = "orosero2405@gmail.com"}]
-keywords = ["powerbi", "metadata", "dax", "documentation", "bi", "pbit"]
+keywords = ["powerbi", "metadata", "dax", "documentation", "bi", "pbit", "mcp", "ai-agent", "llm-context"]
 classifiers = [
+  "Development Status :: 4 - Beta",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Intended Audience :: Developers",
   "Intended Audience :: Information Technology",
@@ -27,8 +33,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/orosero24/pbi-docs"
-Issues = "https://github.com/orosero24/pbi-docs/issues"
+Homepage = "https://github.com/Osc2405/pbi-docs"
+Repository = "https://github.com/Osc2405/pbi-docs"
+Issues = "https://github.com/Osc2405/pbi-docs/issues"
+Changelog = "https://github.com/Osc2405/pbi-docs/blob/main/CHANGELOG.md"
 
 [project.scripts]
 pbi-docs = "pbi_extractor.cli:main"

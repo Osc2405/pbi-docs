@@ -1,42 +1,149 @@
 """
-Utilities for comparing two models (cleaned_metadata) and producing a simple diff.
+Utilities for comparing two models (cleaned_metadata) and producing a
+content-aware diff: not just which measures/columns/relationships were
+added or removed, but which existing ones changed content.
 """
 
-from typing import Dict, Set, Tuple
+import re
+from typing import Dict, List, Tuple
+
+_WHITESPACE_RE = re.compile(r"\s+")
 
 
-def _measure_set(meta: dict) -> Set[Tuple[str, str]]:
-    items = set()
+def _normalize_dax(expr: str) -> str:
+    """Strip all whitespace, for the semantic-vs-cosmetic DAX comparison
+    below — DAX has no whitespace-sensitive syntax, so a pure reindent/
+    reflow (e.g. `SUM(Sales[Amount])` vs `SUM(\\n\\tSales[Amount]\\n)`)
+    should compare equal."""
+    return _WHITESPACE_RE.sub("", expr or "")
+
+
+def _index_by(items: List[dict], key_fields: Tuple[str, ...]) -> Dict[tuple, dict]:
+    return {tuple(item.get(f, "") for f in key_fields): item for item in items}
+
+
+def _diff_field_changes(a: dict, b: dict, fields: List[str]) -> dict:
+    """Return {field: {"old": ..., "new": ...}} for every field that differs."""
+    changes = {}
+    for field in fields:
+        old, new = a.get(field, ""), b.get(field, "")
+        if old != new:
+            changes[field] = {"old": old, "new": new}
+    return changes
+
+
+def _all_measures(meta: dict) -> Dict[Tuple[str, str], dict]:
+    items = []
     for t in meta.get("tables", []):
         for m in t.get("measures", []):
-            items.add((t.get("name", "?"), m.get("name", "?")))
-    return items
+            items.append({"table": t.get("name", "?"), **m})
+    return _index_by(items, ("table", "name"))
 
 
-def _rel_set(meta: dict) -> Set[Tuple[str, str, str, str, str, str]]:
-    items = set()
-    for r in meta.get("relationships", []):
-        items.add(
-            (
-                r.get("from_table", ""),
-                r.get("from_column", ""),
-                r.get("to_table", ""),
-                r.get("to_column", ""),
-                r.get("cardinality", ""),
-                r.get("cross_filtering", ""),
-            )
-        )
-    return items
+def _all_columns(meta: dict) -> Dict[Tuple[str, str], dict]:
+    items = []
+    for t in meta.get("tables", []):
+        for c in t.get("columns", []):
+            items.append({"table": t.get("name", "?"), **c})
+    return _index_by(items, ("table", "name"))
+
+
+def _all_relationships(meta: dict) -> Dict[Tuple[str, str, str, str], dict]:
+    return _index_by(meta.get("relationships", []),
+                      ("from_table", "from_column", "to_table", "to_column"))
+
+
+_MEASURE_CONTENT_FIELDS = ["format_string", "display_folder", "is_hidden", "category"]
+_COLUMN_FIELDS = ["data_type", "format_string", "category", "is_hidden", "source_column"]
+_RELATIONSHIP_FIELDS = ["cardinality", "cross_filtering", "is_active"]
+
+
+def _diff_measures(a_measures: dict, b_measures: dict) -> Tuple[list, list, list]:
+    a_keys, b_keys = set(a_measures), set(b_measures)
+    added = sorted(b_keys - a_keys)
+    removed = sorted(a_keys - b_keys)
+
+    modified = []
+    for key in sorted(a_keys & b_keys):
+        a_m, b_m = a_measures[key], b_measures[key]
+        changes = _diff_field_changes(a_m, b_m, _MEASURE_CONTENT_FIELDS)
+
+        a_norm = _normalize_dax(a_m.get("formatted_expression", ""))
+        b_norm = _normalize_dax(b_m.get("formatted_expression", ""))
+        if a_norm != b_norm:
+            changes["formatted_expression"] = {
+                "old": a_m.get("formatted_expression", ""),
+                "new": b_m.get("formatted_expression", ""),
+                "dax_change": "semantic",
+            }
+        elif a_m.get("formatted_expression", "") != b_m.get("formatted_expression", ""):
+            changes["formatted_expression"] = {
+                "old": a_m.get("formatted_expression", ""),
+                "new": b_m.get("formatted_expression", ""),
+                "dax_change": "cosmetic",
+            }
+
+        if changes:
+            table, name = key
+            modified.append({"table": table, "name": name, "changes": changes})
+
+    return added, removed, modified
+
+
+def _diff_columns(a_columns: dict, b_columns: dict) -> Tuple[list, list, list]:
+    a_keys, b_keys = set(a_columns), set(b_columns)
+    added = sorted(b_keys - a_keys)
+    removed = sorted(a_keys - b_keys)
+
+    modified = []
+    for key in sorted(a_keys & b_keys):
+        changes = _diff_field_changes(a_columns[key], b_columns[key], _COLUMN_FIELDS)
+        if changes:
+            table, name = key
+            modified.append({"table": table, "name": name, "changes": changes})
+
+    return added, removed, modified
+
+
+def _diff_relationships(a_rels: dict, b_rels: dict) -> Tuple[list, list, list]:
+    a_keys, b_keys = set(a_rels), set(b_rels)
+    added = sorted(b_keys - a_keys)
+    removed = sorted(a_keys - b_keys)
+
+    modified = []
+    for key in sorted(a_keys & b_keys):
+        changes = _diff_field_changes(a_rels[key], b_rels[key], _RELATIONSHIP_FIELDS)
+        if changes:
+            from_table, from_column, to_table, to_column = key
+            modified.append({
+                "from_table": from_table, "from_column": from_column,
+                "to_table": to_table, "to_column": to_column,
+                "changes": changes,
+            })
+
+    return added, removed, modified
 
 
 def diff_models(meta_a: dict, meta_b: dict) -> dict:
-    a_measures, b_measures = _measure_set(meta_a), _measure_set(meta_b)
-    a_rels, b_rels = _rel_set(meta_a), _rel_set(meta_b)
+    a_measures, b_measures = _all_measures(meta_a), _all_measures(meta_b)
+    a_columns, b_columns = _all_columns(meta_a), _all_columns(meta_b)
+    a_rels, b_rels = _all_relationships(meta_a), _all_relationships(meta_b)
+
+    measures_added, measures_removed, measures_modified = _diff_measures(a_measures, b_measures)
+    columns_added, columns_removed, columns_modified = _diff_columns(a_columns, b_columns)
+    relationships_added, relationships_removed, relationships_modified = \
+        _diff_relationships(a_rels, b_rels)
+
     return {
         "a_model": meta_a.get("file_name"),
         "b_model": meta_b.get("file_name"),
-        "measures_added": sorted(list(b_measures - a_measures)),
-        "measures_removed": sorted(list(a_measures - b_measures)),
-        "relationships_added": sorted(list(b_rels - a_rels)),
-        "relationships_removed": sorted(list(a_rels - b_rels)),
+        "measures_added": measures_added,
+        "measures_removed": measures_removed,
+        "measures_modified": measures_modified,
+        "columns_added": columns_added,
+        "columns_removed": columns_removed,
+        "columns_modified": columns_modified,
+        "relationships_added": relationships_added,
+        "relationships_removed": relationships_removed,
+        "relationships_modified": relationships_modified,
     }

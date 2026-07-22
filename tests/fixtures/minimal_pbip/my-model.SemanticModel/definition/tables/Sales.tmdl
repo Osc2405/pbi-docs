@@ -1,0 +1,33 @@
+table Sales
+
+	column SalesID
+		dataType: int64
+		sourceColumn: SalesID
+
+	column SalesAmount
+		dataType: decimal
+		formatString: $#,0.###;($#,0.###)
+		sourceColumn: SalesAmount
+
+	column DateKey
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		sourceColumn: DateKey
+
+	measure 'Total Sales' = SUM(Sales[SalesAmount])
+		formatString: $#,0
+
+	measure 'YTD Sales' =
+			CALCULATE(
+				[Total Sales],
+				DATESYTD('Date'[Date])
+			)
+		formatString: $#,0
+		displayFolder: Time Intelligence
+
+	partition Sales-Partition
+		mode: import
+		source
+			type: m
+
+	annotation PBI_ResultType = Table

@@ -27,12 +27,17 @@ def generate_markdown(cleaned_metadata: dict, lang: str = "en") -> str:
     for table in business_tables:
         if table["is_hidden"] and not any(not m["is_hidden"] for m in table.get("measures", [])):
             continue
+
+        visible_columns = [c for c in table["columns"] if not c["is_hidden"]]
+        visible_measures = [m for m in table["measures"] if not m["is_hidden"]]
+        if not visible_columns and not visible_measures:
+            continue
+
         if table["is_hidden"]:
             doc += f"### {table['name']} *({get_translation(lang, 'hidden_table_measures_only')})*\n\n"
         else:
             doc += f"### {table['name']}\n\n"
 
-        visible_columns = [c for c in table["columns"] if not c["is_hidden"]]
         if visible_columns:
             doc += f"**{get_translation(lang, 'columns')}:**\n\n"
             doc += f"| {get_translation(lang, 'column')} | {get_translation(lang, 'type')} | {get_translation(lang, 'category')} |\n"
@@ -41,7 +46,6 @@ def generate_markdown(cleaned_metadata: dict, lang: str = "en") -> str:
                 doc += f"| `{col['name']}` | {col['data_type']} | {col['category']} |\n"
             doc += "\n"
 
-        visible_measures = [m for m in table["measures"] if not m["is_hidden"]]
         if visible_measures:
             doc += f"**{get_translation(lang, 'measures')}:**\n\n"
             measures_by_category: Dict[str, List[dict]] = {}

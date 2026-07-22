@@ -1,0 +1,29 @@
+table _Measures
+	isHidden
+
+	column MeasureID
+		dataType: int64
+		isHidden
+		sourceColumn: MeasureID
+
+	measure 'Complex KPI' =
+			VAR vSales = [Total Sales]
+			VAR vPrev = CALCULATE(
+				[Total Sales],
+				PREVIOUSYEAR('Date'[Date])
+			)
+			RETURN
+			IF(
+				ISBLANK(vPrev),
+				BLANK(),
+				DIVIDE(vSales - vPrev, vPrev)
+			)
+		formatString: 0.0%
+		displayFolder: KPIs
+
+	partition _Measures-Partition
+		mode: import
+		source
+			type: calculated
+
+	annotation PBI_NavigationStepName = Navigation
