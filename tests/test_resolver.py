@@ -48,6 +48,9 @@ def toon_dir(tmp_path_factory):
 
 @pytest.fixture(scope="module")
 def sales_sample_dir(tmp_path_factory):
+    if not SALES_SAMPLE_FIXTURE.exists():
+        pytest.skip("files_test/Sales Sample.pbip not present (gitignored, real "
+                     "Microsoft sample, dev-machine only — not shipped in CI checkouts)")
     out = tmp_path_factory.mktemp("resolver_sales_sample")
     process_file(SALES_SAMPLE_FIXTURE, out, index_format="json")
     return out / "Sales Sample"
