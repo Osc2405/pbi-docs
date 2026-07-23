@@ -137,6 +137,46 @@ def test_index_json_valid_json(tmp_path, metadata):
 
 
 # ---------------------------------------------------------------------------
+# Compact vs pretty JSON (default is compact — docs/scale_validation_report.md
+# section 5.1: indent=2 alone accounted for a measured 44.3% size inflation
+# at scale, on files meant for resolver.py/mcp_server.py/LLM consumption,
+# not human reading)
+# ---------------------------------------------------------------------------
+
+_INDEXED_OUTPUT_FILES = ("index.json", "relationships.json",
+                         Path("tables") / "Sales.json")
+
+
+def test_default_output_is_compact(tmp_path, metadata):
+    write_indexed_output(metadata, tmp_path, "pbip")
+    for rel in _INDEXED_OUTPUT_FILES:
+        raw = (tmp_path / rel).read_text(encoding="utf-8")
+        assert "\n" not in raw, f"{rel} should be a single line by default"
+        assert ": " not in raw and ", " not in raw, f"{rel} should have no spaces after separators"
+
+
+def test_pretty_flag_restores_indentation(tmp_path, metadata):
+    write_indexed_output(metadata, tmp_path, "pbip", pretty=True)
+    for rel in _INDEXED_OUTPUT_FILES:
+        raw = (tmp_path / rel).read_text(encoding="utf-8")
+        assert "\n  " in raw, f"{rel} should be indented when pretty=True"
+
+
+def test_compact_and_pretty_are_content_identical(tmp_path, metadata):
+    compact_dir, pretty_dir = tmp_path / "compact", tmp_path / "pretty"
+    compact_dir.mkdir()
+    pretty_dir.mkdir()
+    write_indexed_output(metadata, compact_dir, "pbip", pretty=False)
+    write_indexed_output(metadata, pretty_dir, "pbip", pretty=True)
+    for rel in _INDEXED_OUTPUT_FILES:
+        with open(compact_dir / rel, encoding="utf-8") as f:
+            compact_data = json.load(f)
+        with open(pretty_dir / rel, encoding="utf-8") as f:
+            pretty_data = json.load(f)
+        assert compact_data == pretty_data, f"{rel} differs in content, not just whitespace"
+
+
+# ---------------------------------------------------------------------------
 # --index-format auto (per-table TOON/JSON selection)
 # ---------------------------------------------------------------------------
 

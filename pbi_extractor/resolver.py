@@ -42,6 +42,14 @@ def load_index(model_dir: Path) -> dict:
     return _load_json(Path(model_dir) / "index.json")
 
 
+def load_metadata(model_dir: Path) -> dict:
+    """Load metadata.json (the full cleaned_metadata dict) for an
+    already-processed model output directory. Used by diff.py's
+    model_dir-based wrappers, which need the in-memory dict shape
+    diff_models() operates on, not the indexed output."""
+    return _load_json(Path(model_dir) / "metadata.json")
+
+
 def list_tables(model_dir: Path, *, hidden: Optional[bool] = None,
                  technical: Optional[bool] = None,
                  category: Optional[str] = None) -> List[dict]:

@@ -21,6 +21,7 @@ from typing import Optional
 
 from . import resolver
 from .resolver import ResolverError
+from . import diff
 from . import __version__
 
 PROTOCOL_VERSION = "2025-06-18"
@@ -138,6 +139,28 @@ TOOLS = [
             "required": ["table_name", "measure_name"],
         },
     },
+    {
+        "name": "diff_impact",
+        "description": "Compare the bound model against another already-processed model "
+                        "directory: added/removed/modified measures, columns, relationships, "
+                        "plus impact analysis (which measures reference each removed/modified "
+                        "measure). Use for 'what changed and what might break' after editing a "
+                        "model. Both directories must already be processed by pbi-docs.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "other_model_dir": {"type": "string",
+                                    "description": "Path to the other processed model's output directory"},
+                "other_is_before": {"type": "boolean",
+                                    "description": "true (default): other_model_dir is the OLDER "
+                                                   "version, the bound model is the NEWER one. "
+                                                   "Set false to reverse that."},
+                "transitive": {"type": "boolean",
+                               "description": "Follow the impact chain beyond one level (default false)"},
+            },
+            "required": ["other_model_dir"],
+        },
+    },
 ]
 
 _DISPATCH = {
@@ -157,6 +180,11 @@ _DISPATCH = {
         model_dir, a["table_name"], a["measure_name"], transitive=a.get("transitive", False)),
     "find_measure_usages": lambda model_dir, a: resolver.find_measure_usages(
         model_dir, a["table_name"], a["measure_name"], transitive=a.get("transitive", False)),
+    "diff_impact": lambda model_dir, a: (
+        diff.diff_with_impact(a["other_model_dir"], model_dir, transitive=a.get("transitive", False))
+        if a.get("other_is_before", True)
+        else diff.diff_with_impact(model_dir, a["other_model_dir"], transitive=a.get("transitive", False))
+    ),
 }
 
 
@@ -220,6 +248,8 @@ def run(model_dir: Path) -> None:
                         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     model_dir = Path(model_dir)
     logger.info(f"pbi-docs MCP server starting, bound to: {model_dir}")
+    if hasattr(sys.stdin, "reconfigure"):
+        sys.stdin.reconfigure(encoding="utf-8", errors="replace")
     for line in sys.stdin:
         line = line.strip()
         if not line:

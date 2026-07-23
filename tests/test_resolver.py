@@ -17,6 +17,7 @@ from pbi_extractor.resolver import (
     search_columns,
     get_measure_dependencies,
     find_measure_usages,
+    load_metadata,
     ResolverError,
 )
 
@@ -464,3 +465,19 @@ def test_cli_query_usages(json_dir):
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
     assert payload == find_measure_usages(json_dir, "Sales", "Total Sales")
+
+
+# ---------------------------------------------------------------------------
+# load_metadata — used by diff.py's model_dir-based wrappers (diff_with_impact)
+# ---------------------------------------------------------------------------
+
+def test_load_metadata_returns_full_dict(json_dir):
+    meta = load_metadata(json_dir)
+    assert meta["summary"]["total_tables"] > 0
+    with open(json_dir / "metadata.json", "r", encoding="utf-8") as f:
+        assert meta == json.load(f)
+
+
+def test_load_metadata_missing_file_raises_resolver_error(tmp_path):
+    with pytest.raises(ResolverError):
+        load_metadata(tmp_path)

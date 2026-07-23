@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-07-20
+## [1.0.0] - 2026-07-21
 
 ### Added
 
@@ -95,8 +95,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`docs/scale_validation_report.md`** — Fase 0 of the context/audit-layer roadmap: timing, `index.json` size, and TOON-threshold behavior measured against a 60-table/288-measure synthetic model. Key findings: `--index-format auto` converges to pure `toon` at this scale (every table exceeds the 7-row threshold); the "specific table" and "deep-dive" token-savings scenarios from `token_optimization_report.md` (validated on 7 tables) invert at 60 tables because `index.json`'s per-table fixed cost grows with table count; `resolver.get_measure_dependencies`/`find_measure_usages` with `transitive=True` re-reads every table from disk on each BFS hop (0.002s → 1.6s going from a single lookup to a transitive one on this model) — root-caused and partially fixed, see Fixed below.
 - **Content-aware `--diff`** (Fase 1 of the context/audit-layer roadmap, `pbi_extractor/diff.py`) — `diff_models()` previously only diffed *existence* (measure/relationship added or removed by identity tuple), with zero column support and zero DAX/format comparison. Now adds `measures_modified`, `columns_added`/`removed`/`modified`, and `relationships_modified`, each entry carrying a `changes` dict of `{field: {old, new}}`. DAX changes on `formatted_expression` are additionally tagged `"semantic"` or `"cosmetic"` via a whitespace-insensitive comparison (`_normalize_dax`) — documented as a text heuristic, not a DAX parser. `tests/test_diff.py` (11 tests) is the correctness gate for this deterministic logic — no separate empirical "precision report" needed, unlike the LLM-facing validation reports, since there's no non-determinism to measure here. `cli.py`'s `--diff` now also logs an added/removed/modified summary line per category.
 
+- **`--diff-impact`**: combine with `--diff` to report which measures reference each
+  removed/modified measure (impact analysis), on top of the content-aware diff above.
+  Combine with `--transitive` to follow the dependency chain beyond one level.
+  - `diff.diff_impact(diff, model_dir_a, model_dir_b, *, transitive=False)` and
+    `diff.diff_with_impact(model_dir_a, model_dir_b, *, transitive=False)` connect `diff.py`
+    (previously independent of `resolver.py`) to `resolver.find_measure_usages()`.
+  - `resolver.load_metadata(model_dir)`: reads `metadata.json` from an already-processed output
+    directory — needed by the model_dir-based diff wrappers.
+  - MCP server: new `diff_impact` tool (server now exposes 9 tools) — lets an AI agent ask "what
+    changed between these two model versions, and what might break" without leaving the MCP
+    session.
+
 ### Changed
 
+- **Indexed output (`index.json`, `tables/*.json`, `relationships.json`) is compact by default**,
+  not indented. These files are meant for `resolver.py`/`mcp_server.py`/LLM consumption, not
+  human reading — the human-readable artifact is `model_documentation.md`. Measured on a 60-table
+  synthetic model: -44.3% on the "deep-dive" scenario (`docs/scale_validation_report.md` section
+  5.2), confirming the projection already documented in section 5.1.
+  - New `--pretty` CLI flag restores the previous `indent=2` behavior for human debugging.
+  - `write_indexed_output()` and `process_file()` gain a `pretty: bool = False` parameter.
 - `cli.py :: process_file()` now accepts an `index_format` parameter and calls `write_indexed_output()` after the existing pipeline steps.
 - `cli.py :: main()` updated description from "`.pbit`" to "`.pbit` / `.pbip`"; removed the hardcoded `.pbit`-extension validation for `--input`.
 - Output directory naming for PBIP: uses clean model name (e.g., `my-model/`) instead of `my-model.pbit/`. PBIT behavior is unchanged for backward compatibility.
@@ -120,6 +139,21 @@ Bugs found and fixed while validating PBIP/TMDL support against a real (non-synt
 - **`resolver.get_table()` always loaded the full `index.json` before reading the requested table** (`pbi_extractor/resolver.py`) — the finding from `docs/scale_validation_report.md` section 4 ("tabla específica"/"deep-dive" scenarios inverting at 60-table scale because `index.json`'s per-table fixed cost outweighed the table being fetched), root-caused and partially fixed. The table's filename is fully determined by `_safe_filename(table_name)`, so a point lookup never needed the index at all — it only read it because the code was written to validate existence that way. Now `get_table()` reads `tables/<name>.json` directly first (with a name-match guard against `_safe_filename` collisions between differently-named tables); `index.json` is only loaded as a fallback to build the "Available tables" error list when the direct read misses. `get_measure()` and the non-transitive branch of `get_measure_dependencies()` delegate to `get_table()`, so they inherit the fix for free. Re-measured on the same 60-table synthetic model: "tabla específica" drops from 10.34x to 2.00x the size of raw TMDL — a large improvement, but not a net win on this particular synthetic model, whose generator produces clean TMDL with no `lineageTag`/`annotations` noise to strip (unlike the real `Supply Chain Sample.pbip` the original 91%/35.4% savings figures came from). "Deep-dive completo" is unaffected by design (`list_tables()` genuinely needs the full table listing, so it correctly still reads `index.json`) and remains inverted (2.48x); dropping `json.dump(..., indent=2)` was measured (not implemented) as a candidate fix — 44.3% size reduction, bringing the ratio to 1.38x, still not a full reversal — and left as an open, evidence-backed finding rather than an untested guess. `docs/scale_validation_report.md` section 5.1 has the full write-up and numbers. Two new regression tests in `tests/test_resolver.py` assert `load_index()` is not called on the `get_table()`/`get_measure()` happy path.
 - **`resolver.find_measure_usages(transitive=True)` re-read the entire model from disk on every BFS hop** (`pbi_extractor/resolver.py`) — the finding from `docs/scale_validation_report.md` section 5. `_all_measures(model_dir)` is now fetched once per call and reused across all hops instead of being re-fetched inside the recursive single-hop helper. Verified deterministically (`tests/test_resolver.py::test_find_measure_usages_transitive_reads_model_once_not_per_hop`, asserts the call count is exactly 1 via monkeypatch) rather than by a wall-clock threshold, which was flaky across cold/warm filesystem cache.
 - **`scripts/generate_synthetic_pbip.py` generated duplicate measure names across fact tables** (e.g. every `FactNN` table had its own `"Total Amount1"`) — found while trying to get a clean before/after timing number for the fix above. A real Tabular model never allows this (measure names are unique model-wide); the collision was silently inflating `find_measure_usages`'s BFS with false cross-table matches, which means the original 1.6s figure in `docs/scale_validation_report.md` mixed the real per-hop re-read cost with this generator artifact. Fixed by prefixing numeric column names with the table name (`Fact01Amount1` instead of `Amount1`) so derived measure names are naturally unique. See `docs/scale_validation_report.md` section 5 for the full correction — no clean re-measured wall-clock number is presented as a replacement, the call-count test is the validation instead.
+- **`model_documentation.md` polished for human readability** (`pbi_extractor/documentation.py`): removed dead code (`category_icons`, built but never read), unified measure-category heading levels (`####` consistently, instead of jumping to `#####` inside a table but `####` in the closing summary), removed the per-measure `---` separator (was repeating once per measure, noisy in models with many measures per category — a single blank line already delimits them; `---` is now reserved for top-level section breaks only), and removed the "Key Measures Available" closing summary, which duplicated (with less detail, and only 7 of 10 categories) the same measures already listed with full DAX earlier in the same document.
+
+### Docs
+
+- `docs/scale_validation_report.md` section 5.2: real (not projected) measurement of the
+  compact-JSON change on the 60-table synthetic model. Real token counts via the Anthropic API
+  remain blocked in this environment (no `ANTHROPIC_API_KEY`) — figures are still bytes, not
+  measured tokens.
+
+### Considered, not implemented
+
+- **`--skip-legacy` for `agent_context.json`/`model_context.jsonl`**: evaluated and deliberately
+  left out of this release. Neither file is on the read path used by `resolver.py`/`mcp_server.py`
+  — skipping them would save generation time/disk, not query-time tokens. See the comment in
+  `cli.py` above the legacy-output block.
 
 ### Architecture
 

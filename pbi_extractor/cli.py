@@ -14,7 +14,7 @@ from .extractor import parse_datamodel_schema, PBITExtractionError
 from .pbip_extractor import parse_pbip_model, PBIPExtractionError, SemanticModelNotFoundError
 from .processor import process_schema, ProcessingError
 from .documentation import generate_markdown, build_agent_context
-from .diff import diff_models
+from .diff import diff_models, diff_impact
 from .jsonl_generator import generate_model_context, write_jsonl_context
 from .indexed_output import write_indexed_output
 from . import resolver
@@ -74,7 +74,7 @@ DEFAULT_OUTPUT_BASE = Path("output")
 
 
 def process_file(input_file: Path, output_base: Path, lang: str = "en",
-                 index_format: str = "json") -> dict:
+                 index_format: str = "json", pretty: bool = False) -> dict:
     """Process a .pbit or .pbip model and generate all metadata.
 
     Args:
@@ -82,6 +82,8 @@ def process_file(input_file: Path, output_base: Path, lang: str = "en",
         output_base: Base output directory
         lang: Language code for documentation ('en' or 'es')
         index_format: Output format for indexed output ('json', 'toon', or 'auto')
+        pretty: If True, indent the indexed output JSON files for human
+                debugging. Default False (compact — see indexed_output.py).
 
     Returns:
         dict: Processed metadata
@@ -130,6 +132,11 @@ def process_file(input_file: Path, output_base: Path, lang: str = "en",
             f.write(markdown_content)
         logger.info(f"Documentation saved to: {markdown_path}")
         
+        # agent_context.json/model_context.jsonl are backwards-compat outputs for
+        # external consumers (e.g. existing RAG pipelines) — neither is read by
+        # resolver.py/mcp_server.py, so skipping them would save generation
+        # time/disk, not query-time tokens. Left always-on; see CHANGELOG for
+        # the decision record.
         # Generate agent context (JSON) (with language)
         logger.debug("Generating agent context")
         agent_context = build_agent_context(metadata, lang=lang)
@@ -148,7 +155,7 @@ def process_file(input_file: Path, output_base: Path, lang: str = "en",
         # Generate indexed output (index.json, tables/*.json, relationships.json)
         logger.debug(f"Generating indexed output (format: {index_format})")
         write_indexed_output(metadata, output_dir,
-                             source_format=fmt, index_format=index_format)
+                             source_format=fmt, index_format=index_format, pretty=pretty)
         logger.info(f"Indexed output written to: {output_dir}")
 
         logger.info(f"Processing completed successfully for: {input_file.name}")
@@ -200,6 +207,8 @@ def _run_query(args) -> int:
                         "--search-columns, --relationships, --dependencies, --usages")
             return 1
 
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0
     except ResolverError as e:
@@ -258,6 +267,14 @@ Usage examples:
         help="Compare two models and generate diff (mixed .pbit/.pbip supported)"
     )
     parser.add_argument(
+        "--diff-impact",
+        action="store_true",
+        dest="diff_impact",
+        help="Combine with --diff: also report which measures depend on each "
+             "removed/modified measure (impact analysis). Combine with --transitive "
+             "to follow the dependency chain beyond one level."
+    )
+    parser.add_argument(
         "--verbose", "-v",
         action="store_true",
         help="Enable verbose mode (more debugging information)"
@@ -277,6 +294,13 @@ Usage examples:
         dest="index_format",
         help="Format for indexed output files: 'json', 'toon', or 'auto' "
              "(per-table: TOON for large/uniform tables, JSON for small ones). Default: json"
+    )
+    parser.add_argument(
+        "--pretty",
+        action="store_true",
+        help="Indent indexed output JSON (index.json, tables/*.json, relationships.json) "
+             "for human debugging. Default: compact (these files are meant for "
+             "resolver.py/mcp_server.py/LLM consumption, not human reading)."
     )
     parser.add_argument(
         "--query",
@@ -340,10 +364,14 @@ Usage examples:
             logger.info(f"Comparing models: {a_path.name} vs {b_path.name}")
             try:
                 meta_a = process_file(a_path, args.output, lang=args.lang,
-                                      index_format=args.index_format)
+                                      index_format=args.index_format, pretty=args.pretty)
                 meta_b = process_file(b_path, args.output, lang=args.lang,
-                                      index_format=args.index_format)
+                                      index_format=args.index_format, pretty=args.pretty)
                 diff = diff_models(meta_a, meta_b)
+                if args.diff_impact:
+                    model_dir_a = args.output / _get_model_name(a_path, detect_input_format(str(a_path)))
+                    model_dir_b = args.output / _get_model_name(b_path, detect_input_format(str(b_path)))
+                    diff.update(diff_impact(diff, model_dir_a, model_dir_b, transitive=args.transitive))
                 diff_name = f"diff_{a_path.stem}_vs_{b_path.stem}.json"
                 diff_path = args.output / diff_name
                 with open(diff_path, "w", encoding="utf-8") as f:
@@ -378,7 +406,7 @@ Usage examples:
             for path_str in matched:
                 try:
                     process_file(Path(path_str), args.output, lang=args.lang,
-                                 index_format=args.index_format)
+                                 index_format=args.index_format, pretty=args.pretty)
                     success_count += 1
                 except Exception as e:
                     logger.error(f"Error processing {path_str}: {e}")
@@ -402,7 +430,7 @@ Usage examples:
             return 1
 
         process_file(args.input, args.output, lang=args.lang,
-                     index_format=args.index_format)
+                     index_format=args.index_format, pretty=args.pretty)
         return 0
 
     except KeyboardInterrupt:

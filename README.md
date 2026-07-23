@@ -1,94 +1,43 @@
 ## pbi-docs — AI Context Engine for Power BI Models
 
-
 [![Tests](https://github.com/Osc2405/pbi-docs/actions/workflows/tests.yml/badge.svg)](https://github.com/Osc2405/pbi-docs/actions/workflows/tests.yml)
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/Osc2405/pbi-docs/actions/workflows/tests.yml)
 
-**Compiles Power BI models (`.pbit` and `.pbip`/TMDL) into indexed, queryable context for AI
-agents — via files, CLI (`--query`), or a built-in MCP server. Human-readable documentation is
-one of several outputs, not the whole story.**
+**Turns a Power BI model (`.pbit` or the new `.pbip`/TMDL format) into documentation and
+context an AI agent can actually use** — human-readable Markdown, indexed JSON for LLMs/RAG, a
+query CLI, and a read-only MCP server. Zero external dependencies.
 
-Automatically extract metadata from Power BI models and generate:
-- **Indexed, queryable context for AI agents** — `index.json` + per-table files, on-demand lookup/search (`--query`), a read-only **MCP server** (`--mcp-serve`), and chat-invocable **Skills** for Claude Code / Copilot
-- AI-optimized JSON/JSONL context for LLMs and RAG pipelines
-- Human-readable Markdown documentation
-- Categorized measures (revenue, cost, margin, etc.)
-- **Hierarchical DAX formatting** for maximum readability
+**Who it's for:** data engineers documenting dashboards, consultants auditing models they didn't
+build, and anyone connecting an AI agent (Claude, GPT, Copilot) to a Power BI model's structure.
 
-No external dependencies. Python-only — including the MCP server, hand-rolled against the stable JSON-RPC spec rather than pulling in the official SDK's dependency tree.
+### Demo
 
-## Why pbi-docs?
-
-| Your Need | pbi-docs Solution |
-|-----------|---------------------|
-| **Document 10+ dashboards fast** | Batch processing with `--batch` |
-| **Support new PBIP format** | Full TMDL parser, auto-detected from `.pbip` or folder |
-| **Train AI agents on your models** | AI-optimized JSONL + indexed output |
-| **Actually readable DAX** | Hierarchical indentation (4x better than raw) |
-| **Zero-cost, zero-install** | Python-only, no .NET dependencies |
-| **Compare model versions** | Built-in `--diff` mode (mixed formats supported) |
-
-**Perfect for:** Data engineers onboarding teams, consultants auditing models, organizations building AI copilots for BI.
-
+![Power BI Model](docs/images/powerbi-sample.png)
+![CLI Usage](docs/images/CLI_Usage.png)
+![AI Agent Using the Documentation](docs/images/ChatGPT-demo.gif)
 
 ## Quick Start
 
 ```powershell
-# 1. Clone the repository
 git clone https://github.com/Osc2405/pbi-docs.git
 cd pbi-docs
-
-# 2. Install the package
 pip install -e .
 
-# 3a. Generate documentation from a .pbit file
+# From a .pbit file...
 pbi-docs --input "data/pbit/my-model.pbit"
-
-# 3b. Or from a PBIP project folder (new in v1.0)
+# ...or a PBIP project (folder, .pbip marker, or .SemanticModel/ — auto-detected)
 pbi-docs --input "data/pbip/my-model/"
 
-# 4. Review the results (Windows PowerShell)
 Get-Content "output/my-model.pbit/model_documentation.md"
 ```
 
-**Result:** Complete documentation of your Power BI model in seconds. 7 files are generated per model (4 original + `index.json`, `relationships.json`, and per-table JSON files).
+**Result:** 7 files in `output/<model-name>/` in seconds — human-readable Markdown, JSON/JSONL
+context for AI agents, and an indexed, queryable version for large models.
 
-## Demo
-
-### Input (Power BI Model)
-![Power BI Model](docs/images/powerbi-sample.png)
-
-### CLI Usage
-![CLI Usage](docs/images/CLI_Usage.png)
-
-### AI Agent Using the Documentation
-![ChatGPT Demo](docs/images/ChatGPT-demo.gif)
-
----
-
-## Minimal Reproducible Example
-
-> **Note:** The sample files used in this documentation are available from the [Microsoft Power BI Desktop Samples repository](https://github.com/microsoft/powerbi-desktop-samples). These are official sample files provided by Microsoft for learning and testing purposes.
-
-### Step 1: Prepare a .pbit file
-
-If you have a `.pbix` file, export it to `.pbit` from Power BI Desktop:
-1. Open your `.pbix` file in Power BI Desktop
-2. Go to **File > Export > Power BI Template**
-3. Save the `.pbit` file in the `data/pbit/` folder
-
-Alternatively, you can download sample `.pbit` files from the [Microsoft Power BI Desktop Samples repository](https://github.com/microsoft/powerbi-desktop-samples) and export them to `.pbit` format.
-
-### Step 2: Run the extractor
-
-```powershell
-# Process your .pbit file
-pbi-docs --input "data/pbit/my-model.pbit"
-```
-
-### Step 3: Verify the output
+<details>
+<summary><strong>Full walkthrough</strong> — folder structure, expected output, and using the context in Python</summary>
 
 The command generates a folder in `output/` with all documentation files:
 
@@ -98,23 +47,16 @@ output/my-model.pbit/          (or output/my-model/ for PBIP)
 ├── model_documentation.md     # Human-readable documentation
 ├── agent_context.json         # LLM-optimized context (top-20 measures)
 ├── model_context.jsonl        # JSONL format for embeddings/RAG
-├── index.json                 # Lightweight index + pointers (NEW)
-├── relationships.json         # All relationships (NEW)
+├── index.json                 # Lightweight index + pointers
+├── relationships.json         # All relationships
 └── tables/
-    ├── Sales.json             # Full detail per table (NEW)
+    ├── Sales.json             # Full detail per table
     └── ...
 ```
 
-### Step 4: Review the documentation
-
-**Expected output example:**
-
 ```powershell
-# View the model summary
 Get-Content "output/my-model.pbit/model_documentation.md" | Select-Object -First 15
 ```
-
-**Output:**
 ```markdown
 # my-model - Power BI Data Model
 
@@ -128,76 +70,55 @@ Get-Content "output/my-model.pbit/model_documentation.md" | Select-Object -First
 - **Relationships:** 9
 ```
 
-### Step 5: Use the context for AI
+Use the JSON context directly in Python (or point an AI agent at it via `--query` or
+`--mcp-serve` — see [Use Cases](#use-cases) below):
 
 ```python
 import json
 
-# Load context for AI analysis
 with open("output/my-model.pbit/agent_context.json", "r", encoding="utf-8") as f:
     context = json.load(f)
-    
+
 print(f"Model: {context['model_name']}")
 print(f"Key measures: {len(context['key_measures'])}")
 print(f"First measure: {context['key_measures'][0]['name']}")
 ```
-
-**Expected output:**
 ```
 Model: my-model
 Key measures: 20
 First measure: Revenue Budget
 ```
 
----
+</details>
+
+## Why pbi-docs?
+
+| Your Need | pbi-docs Solution |
+|-----------|---------------------|
+| **Document 10+ dashboards fast** | Batch processing with `--batch` |
+| **Support the new PBIP format** | Full TMDL parser, auto-detected from `.pbip` or folder |
+| **Train AI agents on your models** | Indexed JSON/JSONL context, a query CLI, and an MCP server |
+| **Let an AI agent query the model live** | Read-only MCP server (`--mcp-serve`) — validated against a test harness, not yet a live MCP client, see [MCP server](docs/use-cases.md#7-mcp-server---mcp-serve) |
+| **Use it from your AI coding assistant** | Chat-invocable Skill for Claude Code + prompt file for GitHub Copilot |
+| **Actually readable DAX** | Hierarchical indentation (4x better than raw) |
+| **Compare model versions** | Content-aware `--diff`, with impact analysis (`--diff-impact`) |
+| **Zero-cost, zero-install** | Python-only, no .NET dependencies |
+
+**Perfect for:** Data engineers onboarding teams, consultants auditing models, organizations building AI copilots for BI.
 
 ## Project Status
 
-- **Implemented (see `CHANGELOG.md` for full detail)**
-  - CLI `pbi-docs` with modes: single file (`--input/-i`), custom output (`--output/-o`), batch (`--batch`), model diff (`--diff`), on-demand query (`--query`), and MCP server (`--mcp-serve`), plus verbose mode (`--verbose`).
-  - **`.pbit` and `.pbip`/TMDL support**, auto-detected from file extension or folder structure — hand-rolled parsers for both, zero external dependencies.
-  - **Multi-language support**: Generate documentation in English (`--lang en`) or Spanish (`--lang es`). English is the default.
-  - Model processing and generation of `metadata.json`, `model_documentation.md`, `agent_context.json`, `model_context.jsonl`, plus indexed output (`index.json`, `tables/*.json`, `relationships.json`) in `json` or `toon` format (`--index-format`).
-  - **Query resolver** (`pbi_extractor/resolver.py`) — structured on-demand access to a processed model (`list_tables`, `get_table`, `get_measure`, `search_measures`, `search_columns`, `get_relationships`), normalizing JSON vs TOON transparently. Exposed via `--query` and as 6 MCP tools.
-  - **Read-only MCP server** (`pbi_extractor/mcp_server.py`) — hand-rolled stdio JSON-RPC, no `mcp` SDK dependency.
-  - **Chat-invocable Skills** for Claude Code (`.claude/skills/analyze-pbi-model/`) and GitHub Copilot (`.github/prompts/analyze-pbi-model.prompt.md`).
-  - Advanced DAX formatting with hierarchical indentation and complexity classification (Simple/Medium/Complex).
-  - Intelligent measure categorization (revenue, cost, margin, percentage, ratio, temporal, calendar, etc.).
-  - Python packaging (`pyproject.toml`) with console entry point `pbi-docs`. **203 tests**, zero external dependencies.
-  - Evidence-based reports backing the above claims, not just asserted: see [Reports](#reports) below.
-
-- **Explicitly out of scope for now**
-  - Writing/editing TMDL models (add/modify measures, columns, relationships) — a much larger undertaking (format preservation, validation, merge/conflict handling) than reading, and Microsoft's Modeling MCP already covers this space.
-  - PBIR / report-layer parsing (pages, visuals, bookmarks) — a distinct problem from documenting the semantic model.
-  - Native `.pbix` parsing (export to `.pbit` or `.pbip` first).
-
-## Features
-
-| Feature | Description |
-|---------|-------------|
-| **PBIP / TMDL Support** | Reads `.pbip` projects and `.SemanticModel/` folders (new in v1.0) |
-| **Auto-detection** | Detects format automatically from file extension or folder structure |
-| **Automatic Extraction** | Reads `.pbit` files without additional configuration |
-| **Indexed Output** | Generates `index.json` + per-table JSON files for large-model navigation |
-| **Query Resolver + `--query`** | On-demand table/measure/relationship lookup and search, no need to load whole files |
-| **MCP Server** | `--mcp-serve` — read-only MCP server (stdio), no `mcp` SDK dependency |
-| **Chat Skills** | Claude Code Skill + GitHub Copilot prompt file for analyzing a model from chat |
-| **Advanced DAX Formatting** | Hierarchical indentation with parenthesis alignment for maximum readability |
-| **Intelligent Categorization** | Automatically identifies revenue, cost, temporal columns |
-| **Multi-language Support** | Generate documentation in English or Spanish via `--lang` flag |
-| **Multi-format Docs** | Generates Markdown + JSON + JSONL + indexed output |
-| **AI-Ready** | Context optimized for Claude, GPT, and other LLMs |
-| **Zero Dependencies** | Standard Python only, no external libraries |
-
----
+The read/context layer — PBIP/TMDL support, indexed output, query resolver, MCP server — is
+implemented and tested (222 tests). Every claim above is backed by a dated, reproducible report,
+not just asserted: see [Validation](#validation) below. Writing/editing TMDL models and PBIR/report-
+layer parsing are deliberately out of scope for now (see `CHANGELOG.md` and the
+[Roadmap](#roadmap) for why).
 
 ## Requirements
 - Python 3.10+ (3.12 recommended)
 - Windows PowerShell (instructions include Windows commands)
 
 Optional: virtual environment (`venv`). No external libraries required.
-
----
 
 ## Installation (Windows/PowerShell)
 
@@ -263,6 +184,11 @@ pbi-docs --diff "data/pbit/model_v1.pbit" "data/pbip/model_v2/"
 **Verbose mode (more debugging information):**
 ```powershell
 pbi-docs --input "data/pbit/my-model.pbit" --verbose
+```
+
+**Human-readable indexed output (indented JSON, for debugging — compact by default):**
+```powershell
+pbi-docs --input "data/pbit/my-model.pbit" --pretty
 ```
 
 **Generate documentation in Spanish:**
@@ -380,113 +306,14 @@ After running the command, a folder is created in `output/` with the model name.
 ## `index.json` — open format specification
 
 `index.json` is a small, stable contract meant to be consumed directly by any tool — not just
-pbi-docs' own CLI/resolver/MCP server. This section documents it so other parsers can be built
-against it without reading `pbi_extractor` source.
+pbi-docs' own CLI/resolver/MCP server: a lightweight per-table summary (name, column/measure
+counts, categories, format, and a relative path to that table's detail file) plus pointers to
+every other output file, so an agent can navigate a large model without loading `metadata.json`.
+By default it's written **compact** (no indentation); pass `--pretty` for indented JSON.
 
-### Top-level shape
-
-```jsonc
-{
-  "version": "1",                 // bump on any incompatible shape change
-  "model_name": "Sales Sample",
-  "extraction_date": "2026-07-16T12:10:36.023218",
-  "compatibility_level": "1601",  // Analysis Services compatibility level, as a string
-  "source_format": "pbip",        // "pbit" | "pbip"
-  "index_format": "auto",         // "json" | "toon" | "auto" — see per-table "format" below
-  "summary": { "total_tables": 11, "total_columns": 81, "total_measures": 29, "total_relationships": 5, ... },
-  "tables": [ /* one entry per table, see below */ ],
-  "files": {
-    "metadata": "metadata.json",
-    "documentation": "model_documentation.md",
-    "agent_context": "agent_context.json",
-    "model_context": "model_context.jsonl",
-    "relationships": "relationships.json"
-  }
-}
-```
-
-### Per-table entry (`tables[]`)
-
-```jsonc
-{
-  "name": "Calendar",
-  "is_hidden": false,
-  "is_technical": false,          // heuristic flag for date-template/helper tables
-  "column_count": 29,
-  "measure_count": 0,
-  "categories": ["revenue", "cost"],   // distinct measure categories present in this table (empty if none)
-  "format": "toon",               // "json" | "toon" — the ACTUAL format of this table's file.
-                                   // Always trust this field, not the top-level "index_format":
-                                   // under "auto" mode each table decides independently based on
-                                   // its own size (see below), so different tables in the same
-                                   // model can legitimately have different values here.
-  "path": "tables/Calendar.json"  // relative to index.json's own directory
-}
-```
-
-**Why per-table `format` can vary:** `--index-format auto` picks JSON or TOON per table based on
-`len(columns) + len(measures)` — TOON's `{__toon, __fields, __rows}` wrapper only pays for itself
-once a table is large/uniform enough to amortize it (empirically confirmed on
-`files_test/Supply Chain Sample.pbip`: 5 rows still loses to JSON, 7 rows already wins — see
-`docs/token_optimization_report.md` section 4). A consumer must read `format` per table and never
-assume the whole model shares one encoding.
-
-### `tables/<Name>.json` contract
-
-Two possible shapes, selected by that table's `format`:
-
-**`"format": "json"`** — plain, human-readable:
-```json
-{
-  "name": "About",
-  "is_hidden": false,
-  "is_technical": false,
-  "columns": [
-    {"name": "Key", "data_type": "string", "category": "identifier", "is_hidden": false,
-     "source_column": "Key", "format_string": ""}
-  ],
-  "measures": [
-    {"name": "# Customers", "expression": "COUNTROWS('Customer')",
-     "formatted_expression": "COUNTROWS('Customer')", "format_string": "#,##0",
-     "is_hidden": false, "display_folder": "", "category": "other"}
-  ]
-}
-```
-
-**`"format": "toon"`** — columns and a flat measure summary use TOON encoding
-(`{__toon, __fields, __rows}`, a header + row-array shape — see `pbi_extractor/toon_encoder.py`),
-DAX bodies stay in a separate plain-JSON list so free-text expressions are never TOON-encoded:
-```json
-{
-  "name": "Calendar",
-  "is_hidden": false,
-  "is_technical": false,
-  "columns": {
-    "__toon": true,
-    "__fields": ["name", "data_type", "category", "is_hidden", "source_column", "format_string"],
-    "__rows": [["Date", "dateTime", "temporal", false, "Date", "yyyy-mm-dd"], ...]
-  },
-  "measures_flat": {
-    "__toon": true,
-    "__fields": ["name", "category", "complexity", "is_hidden", "format_string", "display_folder"],
-    "__rows": [...]
-  },
-  "measures_dax": [
-    {"name": "Sales Amount", "formatted_expression": "SUMX('Sales',\n    'Sales'[Quantity] * 'Sales'[Net Price])"}
-  ]
-}
-```
-
-A consumer that wants one uniform shape regardless of format should decode TOON blocks
-(`__fields`/`__rows` → list of dicts by zipping) and merge `measures_flat` + `measures_dax` by
-`name` — exactly what `pbi_extractor/resolver.py`'s `get_table()` does; read that function if you
-want a reference implementation in ~30 lines.
-
-### Versioning
-
-`version: "1"` today. Any change that breaks a consumer reading the shapes above (renaming a
-field, changing `tables[]` entry keys, changing what `format`/`index_format` can contain) must
-bump this value. Additive changes (a new optional field) don't require a bump.
+Full field-by-field contract — top-level shape, per-table entry, the `tables/<Name>.json` JSON vs.
+TOON shapes, and the versioning policy — is documented in
+**[docs/index-json-spec.md](docs/index-json-spec.md)**.
 
 ---
 
@@ -624,150 +451,38 @@ casing would still register as semantic.
 }
 ```
 
----
+**Impact analysis (`--diff-impact`):** add `--diff-impact` (optionally with `--transitive`) to
+also report which measures reference each removed/modified measure — "what changed, and what
+might break" in one call, connecting this diff to the resolver's `find_measure_usages()`:
 
-### 4. Integration with AI Agents and RAG
-
-**Problem:** You want to create a RAG (Retrieval-Augmented Generation) system that answers questions about your Power BI models using embeddings.
-
-**Solution:**
-```python
-import json
-
-# Load JSONL context to create embeddings
-context_entries = []
-with open("output/my-model.pbit/model_context.jsonl", "r", encoding="utf-8") as f:
-    for line in f:
-        entity = json.loads(line)
-        context_entries.append(entity)
-
-# Each entry is independent and ready for embeddings
-for entry in context_entries:
-    print(f"Type: {entry['type']}, Title: {entry['title']}")
-    if entry['type'] == 'measure':
-        print(f"  DAX Expression: {entry['formatted_expression']}")
-        print(f"  Complexity: {entry['complexity']}")
+```powershell
+pbi-docs --diff "data/pbit/dashboard_v1.pbit" "data/pbit/dashboard_v2.pbit" --diff-impact --transitive
 ```
-
-**Output example:**
-```
-Type: model, Title: Model: my-model
-Type: table, Title: Fact (Hidden)
-Type: measure, Title: Total Revenue (revenue)
-  DAX Expression: SUM([Revenue])
-  Complexity: simple
-Type: measure, Title: Revenue SPLY (revenue)
-  DAX Expression: CALCULATE(
-    [Total Revenue],
-    SAMEPERIODLASTYEAR(
-    'Date'[Date]))
-  Complexity: medium
-Type: relationship, Title: Relationship: Fact -> Date
-```
-
-**Usage with embeddings:**
-- Each JSONL line can be converted to an embedding
-- Enables semantic search of measures, tables and relationships
-- Ideal for chatbots that answer questions about Power BI models
-
-### 5. Analyzing a model from chat (Claude Code / GitHub Copilot)
-
-**Problem:** You want to ask an AI coding assistant questions about a Power BI model without
-manually running the CLI and pasting file contents into chat.
-
-**Solution:** pbi-docs ships two chat-invocable skills that run the extractor and then query the
-model on demand via `pbi-docs --query` (see below) instead of dumping whole files into context:
-
-- **Claude Code:** `.claude/skills/analyze-pbi-model/` — copy this folder into your own project's
-  `.claude/skills/` (or work from inside this repo), then ask `/analyze-pbi-model <path>` or just
-  "analyze this Power BI model" / "what measures does this model have".
-- **GitHub Copilot (VS Code):** `.github/prompts/analyze-pbi-model.prompt.md` — copy into your own
-  project's `.github/prompts/`, then run `/analyze-pbi-model` in Copilot Chat.
-
-Both follow the same rule: read `index.json` first (it's tiny), then `--query` for anything
-scoped to one table, a search, or relationships, and reach for `metadata.json` (the full
-unfiltered dump) only as a last resort.
-
-### 6. Querying a processed model (`--query`)
-
-**Problem:** An agent (or script) needs one table's measures, or "which tables have a revenue
-measure", without loading `metadata.json` or hand-parsing `tables/*.json` — and without caring
-whether the output was generated as `--index-format json` or `toon`.
-
-**Solution:** `pbi_extractor/resolver.py` normalizes both formats into one shape, exposed via
-`--query`:
-
-```bash
-pbi-docs --query output/my-model --list-tables                                 # table summaries
-pbi-docs --query output/my-model --list-tables --category revenue              # filtered
-pbi-docs --query output/my-model --table "Sales"                               # one table, full detail
-pbi-docs --query output/my-model --table "Sales" --measure "Total Sales"       # one measure, full record
-pbi-docs --query output/my-model --search-measures "revenue"                   # cross-table measure search
-pbi-docs --query output/my-model --search-columns "customer"                   # cross-table column search
-pbi-docs --query output/my-model --relationships --table "Sales"               # relationships touching a table
-```
-
-Each prints JSON to stdout. This is the same query layer the two Skills above use, and what the
-MCP server below wraps.
-
-### 7. MCP server (`--mcp-serve`)
-
-**Problem:** You want any MCP-capable client (Claude Desktop, Claude Code, Copilot, etc.) to
-query a Power BI model directly as tools, not through a Skill's file-reading instructions.
-
-**Solution:** `pbi_extractor/mcp_server.py` — a read-only MCP server, hand-rolled against the
-stable spec (`2025-06-18`, newline-delimited JSON-RPC 2.0 over stdio). No `mcp` SDK dependency:
-that package pulls in pydantic/anyio/httpx/starlette/uvicorn, which would break this project's
-zero-dependency stance. One server instance is bound to one already-processed model directory,
-exposing 6 tools — thin wrappers around `resolver.py`: `list_tables`, `get_table`, `get_measure`,
-`search_measures`, `search_columns`, `get_relationships`.
-
-```bash
-pbi-docs --mcp-serve output/my-model
-```
-
-Configure it in your client's MCP settings (e.g. `claude_desktop_config.json` or Claude Code's
-`.mcp.json`):
 
 ```json
 {
-  "mcpServers": {
-    "pbi-docs": {
-      "type": "stdio",
-      "command": "python",
-      "args": ["-m", "pbi_extractor.mcp_server", "output/my-model"]
-    }
-  }
+  "measures_removed_impact": [
+    {"table": "Fact", "name": "Deprecated Measure", "used_by": [{"table": "Fact", "name": "Margin %"}]}
+  ],
+  "measures_modified_impact": [
+    {"table": "Fact", "name": "Total Sales", "used_by": [{"table": "Fact", "name": "YTD Sales"}]}
+  ]
 }
 ```
-
-To analyze a different model, point another server entry at a different `output/<model-name>`
-directory — each instance is rooted to one model, same pattern as the filesystem MCP server.
-
-This is deliberately read-only (no DAX execution, no model editing) — it's a context layer,
-complementary to Microsoft's Modeling MCP (writes) and Remote MCP (executes DAX), not a
-replacement for either.
-
-**This repo ships its own `.mcp.json`** (project root) pointing at the `Supply Chain Sample`
-validation fixture — a dev/demo convenience for testing `mcp_server.py` itself against a real
-MCP client, not a template end users need (real usage is the config above, pointed at your own
-processed model). To verify it against Claude Code:
-
-1. Process the fixture first: `pbi-docs -i "files_test/Supply Chain Sample.pbip" -o output`.
-2. Restart/reload Claude Code in this project (or open a fresh session here) — project-scoped
-   `.mcp.json` servers require a session (re)start to be picked up.
-3. Run `/mcp` — `pbi-docs` shows as `⏸ Pending approval` the first time; approve it.
-4. Run `/mcp` again — should show connected, 6 tools.
-5. Ask something like *"what tables does this Power BI model have"* — Claude should call
-   `mcp__pbi-docs__list_tables` directly (visible in the transcript), not read any file.
-
-This last step is the one thing about the MCP server that automated tests
-(`tests/test_mcp_server.py`) can't cover — they prove protocol correctness against a harness I
-wrote myself, not that a real client actually discovers and calls the tools.
+Removed measures are checked for usages in the *old* model (those references just broke);
+modified measures are checked in the *new* model (those callers may now behave differently). The
+same capability is exposed to AI agents as the `diff_impact` MCP tool (see
+[MCP server](docs/use-cases.md#7-mcp-server---mcp-serve) in docs/use-cases.md).
 
 ---
 
-## Reports
+More use cases — integrating with AI agents/RAG, chat-invocable Skills for Claude Code and
+GitHub Copilot, the `--query` CLI, and the `--mcp-serve` MCP server — are in
+**[docs/use-cases.md](docs/use-cases.md)**.
+
+---
+
+## Validation
 
 Every efficiency/correctness claim in this README is backed by a dated, reproducible report
 against the real `Supply Chain Sample.pbip` fixture (not a synthetic toy model) — read these
@@ -785,6 +500,13 @@ before taking "AI-ready" or "token-optimized" at face value:
   `--query` both scored 18/18; raw TMDL scored 16/18 (the 2 misses were honest `NOT_FOUND` on a
   field TMDL doesn't contain at all, not agent error). Includes an honest caveat about total
   conversation token overhead vs. raw context-source bytes.
+- **[docs/scale_validation_report.md](docs/scale_validation_report.md)** — behavior at 60
+  tables/288 measures (synthetic, since no public enterprise-scale PBIP model exists): confirms
+  `--index-format auto` and the resolver still hold up, and is transparent about where a fixed
+  per-model cost (`index.json`) stops paying for itself at scale.
+- **[docs/human_validation_protocol.md](docs/human_validation_protocol.md)** *(protocol — not yet
+  executed)* — the planned human-subject experiment for validating that scoped context doesn't
+  cost real users time or accuracy versus raw file dumps.
 
 ---
 
@@ -923,15 +645,6 @@ competing.
 
 **Generated:** 2025-12-22 14:23:29
 
-## Model Summary
-
-- **Business Tables:** 9
-- **Total Columns:** 23
-- **Total Measures:** 44
-- **Relationships:** 9
-
----
-
 ## Tables and Measures
 
 ### Fact *(Hidden Table - Measures Only)*
@@ -1031,15 +744,8 @@ DIVIDE(
 
 ## Contributing
 
-Contributions are welcome! If you'd like to contribute:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-**Bug reports and feature requests:** Please use [GitHub Issues](https://github.com/Osc2405/pbi-docs/issues)
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow, or use
+[GitHub Issues](https://github.com/Osc2405/pbi-docs/issues) for bug reports and feature requests.
 
 ---
 

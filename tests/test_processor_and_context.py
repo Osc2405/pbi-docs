@@ -92,6 +92,55 @@ def test_generate_markdown_and_agent_context():
     assert any(q for q in agent_ctx["sample_questions"])
 
 
+def _schema_with_two_measures_same_category():
+    """Two measures ('Total Sales', 'Net Sales') both categorize as 'revenue'
+    (categorizer.py matches 'sales' in the name) — needed to check separator/
+    heading behavior across multiple measures within one category."""
+    schema = _minimal_schema()
+    schema["model"]["tables"][0]["measures"].append({
+        "name": "Net Sales",
+        "expression": "SUM(Sales[Amount]) - SUM(Sales[Discount])",
+        "formatString": "$#,0",
+        "isHidden": False,
+        "displayFolder": "Revenue",
+    })
+    return schema
+
+
+def test_markdown_has_no_separator_between_individual_measures():
+    """Regression: the per-measure '---' used to repeat once per measure —
+    noisy in models with several measures per category. A blank line is
+    enough; '---' is reserved for top-level section breaks only."""
+    schema = _schema_with_two_measures_same_category()
+    metadata = process_schema(schema, "SalesModel.pbit")
+    md = generate_markdown(metadata)
+
+    tables_section = md.split("## Relationships")[0]
+    separator_lines = [line for line in tables_section.splitlines() if line.strip() == "---"]
+    assert len(separator_lines) == 1  # only the one after "Model Summary"
+
+
+def test_markdown_measure_category_heading_is_h4():
+    schema = _schema_with_two_measures_same_category()
+    metadata = process_schema(schema, "SalesModel.pbit")
+    md = generate_markdown(metadata)
+
+    assert "#### Revenue Measures" in md
+    assert "##### Revenue Measures" not in md
+
+
+def test_markdown_has_no_duplicate_key_measures_section():
+    """Regression: 'Key Measures Available' repeated (with less detail, and
+    only 7 of 10 categories) the same measures already listed with full DAX
+    earlier in the document — removed as redundant."""
+    schema = _schema_with_two_measures_same_category()
+    metadata = process_schema(schema, "SalesModel.pbit")
+    md = generate_markdown(metadata)
+
+    assert "Key Measures Available" not in md
+    assert "Medidas Clave Disponibles" not in generate_markdown(metadata, lang="es")
+
+
 def test_generate_markdown_spanish():
     """Test that markdown generation works with Spanish language."""
     schema = _minimal_schema()

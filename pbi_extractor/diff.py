@@ -7,6 +7,8 @@ added or removed, but which existing ones changed content.
 import re
 from typing import Dict, List, Tuple
 
+from . import resolver
+
 _WHITESPACE_RE = re.compile(r"\s+")
 
 
@@ -147,3 +149,47 @@ def diff_models(meta_a: dict, meta_b: dict) -> dict:
         "relationships_removed": relationships_removed,
         "relationships_modified": relationships_modified,
     }
+
+
+def diff_impact(diff: dict, model_dir_a, model_dir_b, *, transitive: bool = False) -> dict:
+    """
+    Impact analysis on top of an already-computed diff_models() result:
+    for each removed/modified measure, who else's DAX depends on it.
+
+    Removed measures are looked up in model_dir_a (the OLD model) — those
+    references are now broken. Modified measures are looked up in
+    model_dir_b (the NEW model) — those callers may now behave differently.
+    Both directories must already be pbi-docs output (tables/*.json present).
+    """
+    removed_impact = []
+    for table, name in diff["measures_removed"]:
+        try:
+            usages = resolver.find_measure_usages(model_dir_a, table, name, transitive=transitive)
+        except resolver.ResolverError:
+            usages = []
+        removed_impact.append({"table": table, "name": name, "used_by": usages})
+
+    modified_impact = []
+    for entry in diff["measures_modified"]:
+        try:
+            usages = resolver.find_measure_usages(model_dir_b, entry["table"], entry["name"],
+                                                   transitive=transitive)
+        except resolver.ResolverError:
+            usages = []
+        modified_impact.append({"table": entry["table"], "name": entry["name"], "used_by": usages})
+
+    return {
+        "measures_removed_impact": removed_impact,
+        "measures_modified_impact": modified_impact,
+    }
+
+
+def diff_with_impact(model_dir_a, model_dir_b, *, transitive: bool = False) -> dict:
+    """Convenience wrapper for callers that only have two model_dir paths
+    (CLI --diff-impact, MCP diff_impact tool) rather than already-loaded
+    metadata dicts."""
+    meta_a = resolver.load_metadata(model_dir_a)
+    meta_b = resolver.load_metadata(model_dir_b)
+    diff = diff_models(meta_a, meta_b)
+    diff.update(diff_impact(diff, model_dir_a, model_dir_b, transitive=transitive))
+    return diff

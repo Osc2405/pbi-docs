@@ -55,6 +55,17 @@ def _safe_filename(name: str) -> str:
     return re.sub(r'[\\/:*?"<>|]', "_", name)
 
 
+def _write_json(data, path: Path, pretty: bool) -> None:
+    """Compact by default: the primary consumers of these files are the
+    resolver, the MCP server, and an LLM, not a human reading raw JSON
+    (that's model_documentation.md's job). --pretty restores indent=2."""
+    with open(path, "w", encoding="utf-8") as f:
+        if pretty:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        else:
+            json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
+
+
 def _table_categories(table: dict) -> List[str]:
     """Collect unique measure categories present in a table."""
     seen = set()
@@ -173,6 +184,7 @@ def write_indexed_output(
     output_dir: Path,
     source_format: str,
     index_format: str = "json",
+    pretty: bool = False,
 ) -> None:
     """
     Write index.json, tables/<Name>.json, and relationships.json.
@@ -187,6 +199,9 @@ def write_indexed_output(
                       (per-table: TOON only for tables large enough to benefit,
                       see _should_use_toon; relationships.json always uses TOON
                       in auto mode since relationships are inherently uniform)
+        pretty: if True, indent JSON for human debugging. Default False
+                (compact) since these files are meant for machine/LLM
+                consumption via resolver.py/mcp_server.py.
     """
     is_auto = index_format == "auto"
     use_toon = index_format == "toon" or is_auto
@@ -199,8 +214,7 @@ def write_indexed_output(
     rels_data = (encode_toon(relationships, _REL_TOON_FIELDS)
                  if use_toon else relationships)
     rels_path = output_dir / "relationships.json"
-    with open(rels_path, "w", encoding="utf-8") as f:
-        json.dump(rels_data, f, indent=2, ensure_ascii=False)
+    _write_json(rels_data, rels_path, pretty)
 
     # --- tables/<Name>.json ------------------------------------------------
     for t in cleaned_metadata.get("tables", []):
@@ -208,10 +222,8 @@ def write_indexed_output(
         table_entry = (_table_entry_toon(t) if table_use_toon
                        else _table_entry_json(t))
         fname = _safe_filename(t["name"]) + ".json"
-        with open(tables_dir / fname, "w", encoding="utf-8") as f:
-            json.dump(table_entry, f, indent=2, ensure_ascii=False)
+        _write_json(table_entry, tables_dir / fname, pretty)
 
     # --- index.json --------------------------------------------------------
     index = build_index(cleaned_metadata, source_format, index_format)
-    with open(output_dir / "index.json", "w", encoding="utf-8") as f:
-        json.dump(index, f, indent=2, ensure_ascii=False)
+    _write_json(index, output_dir / "index.json", pretty)

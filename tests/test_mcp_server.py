@@ -13,9 +13,28 @@ import pytest
 
 from pbi_extractor.cli import process_file
 from pbi_extractor import resolver
+from pbi_extractor import diff as diff_module
+from pbi_extractor.indexed_output import write_indexed_output
 
 REPO_ROOT = Path(__file__).parent.parent
 FIXTURE = Path(__file__).parent / "fixtures" / "minimal_pbip" / "my-model.pbip"
+
+
+def _measure(name, expression="1", **overrides):
+    m = {"name": name, "expression": expression, "formatted_expression": expression,
+         "format_string": "", "is_hidden": False, "display_folder": "", "category": "other"}
+    m.update(overrides)
+    return m
+
+
+def _write_synthetic_model_dir(tmp_path, name, tables):
+    meta = {"file_name": name, "tables": tables, "relationships": []}
+    model_dir = tmp_path / name
+    model_dir.mkdir()
+    write_indexed_output(meta, model_dir, source_format="pbit")
+    with open(model_dir / "metadata.json", "w", encoding="utf-8") as f:
+        json.dump(meta, f)
+    return model_dir
 
 
 @pytest.fixture(scope="module")
@@ -80,13 +99,13 @@ def test_initialize_response_shape(model_dir):
     s.close()
 
 
-def test_tools_list_has_eight_tools(session):
+def test_tools_list_has_nine_tools(session):
     resp = session.request("tools/list")
     tools = resp["result"]["tools"]
     names = {t["name"] for t in tools}
     assert names == {"list_tables", "get_table", "get_measure",
                       "search_measures", "search_columns", "get_relationships",
-                      "get_measure_dependencies", "find_measure_usages"}
+                      "get_measure_dependencies", "find_measure_usages", "diff_impact"}
     for t in tools:
         assert "description" in t
         assert t["inputSchema"]["type"] == "object"
@@ -190,3 +209,57 @@ def test_importing_mcp_server_does_not_break_cli_logging(model_dir):
     assert result.returncode == 0, result.stderr
     assert " - __main__ - DEBUG - " in result.stderr
     assert " - mcp_server - " not in result.stderr
+
+
+# ---------------------------------------------------------------------------
+# diff_impact tool
+# ---------------------------------------------------------------------------
+
+def test_tools_call_diff_impact_against_itself_is_empty(session, model_dir):
+    resp = session.call_tool("diff_impact", {"other_model_dir": str(model_dir)})
+    payload = json.loads(resp["result"]["content"][0]["text"])
+    assert payload["measures_added"] == []
+    assert payload["measures_removed"] == []
+    assert payload["measures_modified"] == []
+    assert payload["measures_removed_impact"] == []
+    assert payload["measures_modified_impact"] == []
+
+
+def test_tools_call_diff_impact_matches_direct_call(session, model_dir):
+    resp = session.call_tool("diff_impact", {"other_model_dir": str(model_dir), "transitive": True})
+    payload = json.loads(resp["result"]["content"][0]["text"])
+    expected = diff_module.diff_with_impact(model_dir, model_dir, transitive=True)
+    assert payload == expected
+
+
+def test_tools_call_diff_impact_reports_real_impact(tmp_path):
+    older = _write_synthetic_model_dir(tmp_path, "older", [
+        {"name": "Sales", "columns": [], "measures": [
+            _measure("Total Sales"),
+            _measure("Margin", expression="[Total Sales] * 0.1"),
+        ]},
+    ])
+    newer = _write_synthetic_model_dir(tmp_path, "newer", [
+        {"name": "Sales", "columns": [], "measures": [
+            _measure("Margin", expression="[Total Sales] * 0.1"),
+        ]},
+    ])
+
+    s = ServerSession(newer)
+    s.request("initialize", {"protocolVersion": "2025-06-18", "capabilities": {},
+                              "clientInfo": {"name": "test", "version": "0"}})
+    s.notify("notifications/initialized")
+    resp = s.call_tool("diff_impact", {"other_model_dir": str(older)})
+    s.close()
+
+    payload = json.loads(resp["result"]["content"][0]["text"])
+    assert payload["measures_removed"] == [["Sales", "Total Sales"]]
+    assert payload["measures_removed_impact"] == [
+        {"table": "Sales", "name": "Total Sales",
+         "used_by": [{"table": "Sales", "name": "Margin"}]}
+    ]
+
+
+def test_tools_call_diff_impact_missing_other_model_dir_is_error(session):
+    resp = session.call_tool("diff_impact", {"other_model_dir": "/does/not/exist"})
+    assert resp["result"]["isError"] is True

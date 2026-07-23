@@ -66,7 +66,7 @@ def generate_markdown(cleaned_metadata: dict, lang: str = "en") -> str:
             ]
             for category in category_order:
                 if category in measures_by_category:
-                    doc += f"##### {get_category_name(lang, category)}\n\n"
+                    doc += f"#### {get_category_name(lang, category)}\n\n"
                     for measure in measures_by_category[category]:
                         # Obtener expresión DAX y formatearla
                         expression = measure.get("expression", "")
@@ -87,7 +87,6 @@ def generate_markdown(cleaned_metadata: dict, lang: str = "en") -> str:
                         
                         if measure.get("format_string"):
                             doc += f"*{get_translation(lang, 'format')}:* `{measure['format_string']}`\n\n"
-                        doc += "---\n\n"
                     doc += "\n"
             doc += "\n"
 
@@ -108,47 +107,6 @@ def generate_markdown(cleaned_metadata: dict, lang: str = "en") -> str:
     doc += f"2. {get_translation(lang, 'usage_guide_2')}\n"
     doc += f"3. {get_translation(lang, 'usage_guide_3')}\n"
     doc += f"4. {get_translation(lang, 'usage_guide_4')}\n\n"
-    doc += f"### {get_translation(lang, 'key_measures_available')}\n\n"
-
-    business_tables = [t for t in cleaned_metadata["tables"] if not t["is_technical"]]
-    all_measures_by_category: Dict[str, List[dict]] = {}
-    for table in business_tables:
-        for measure in table["measures"]:
-            if not measure["is_hidden"]:
-                all_measures_by_category.setdefault(measure.get("category", "other"), []).append(
-                    {
-                        "name": measure["name"],
-                        "table": table["name"],
-                        "expression": measure.get("expression", ""),
-                        "format": measure.get("format_string", ""),
-                    }
-                )
-
-    category_icons = {
-        "revenue": "",
-        "cost": "",
-        "margin": "",
-        "percentage": "",
-        "ratio": "",
-        "temporal": "",
-        "calendar_intelligence": "",
-        "aggregation": "",
-        "filtering": "",
-        "other": "",
-    }
-    for category in ["revenue", "cost", "margin", "percentage", "ratio", "temporal", "other"]:
-        if category in all_measures_by_category:
-            measures = all_measures_by_category[category][:5]
-            if measures:
-                category_name = get_category_name(lang, category)
-                doc += f"\n#### {category_name}:\n\n"
-                for measure in measures:
-                    # Translate "from" based on language
-                    from_text = get_translation(lang, "from").lower()
-                    doc += f"- **{measure['name']}** ({from_text} {measure['table']})\n"
-                    if measure["format"]:
-                        doc += f"  - {get_translation(lang, 'format')}: `{measure['format']}`\n"
-                    doc += "\n"
     return doc
 
 

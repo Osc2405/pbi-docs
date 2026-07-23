@@ -158,6 +158,45 @@ ruido estructural que remover en TMDL sintético limpio.
 
 ---
 
+## 5.2. Seguimiento (2026-07-21) — hallazgo #3 implementado, cifra real medida
+
+El hallazgo #3 (sección 5.1) se implementó esta sesión: la salida indexada (`index.json`,
+`tables/*.json`, `relationships.json`) ahora es **compacta por defecto**
+(`json.dump(..., separators=(",", ":"))`, sin `indent`), con un flag `--pretty` opcional que
+restaura `indent=2` para debug humano. Justificación: el consumidor primario de estos archivos es
+`resolver.py`/`mcp_server.py`/un LLM, no un humano leyendo JSON crudo — el artefacto legible para
+humanos sigue siendo `model_documentation.md`, que no se tocó.
+
+Re-corrida completa de la metodología de la sección 5.1 (`scripts/generate_synthetic_pbip.py`,
+`num_dims=20, num_facts=40` — mismos parámetros; los bytes exactos vuelven a variar levemente por
+la aleatoriedad propia del generador, ya documentada, no por el cambio medido aquí):
+
+| Escenario | Raw TMDL | Antes (`indent=2`, ahora `--pretty`) | Después (compacto, default) | Reducción |
+|---|---|---|---|---|
+| **Tabla específica** (`Fact01`, vía `get_table()`, sin `index.json`) | 2,109 bytes | 4,211 bytes → 2.00x | **2,381 bytes → 1.13x** | -43.5% |
+| **Deep-dive completo** (`index.json` + `tables/*.json` + `relationships.json`) | 115,195 bytes | 244,361 bytes → 2.12x | **136,062 bytes → 1.18x** | -44.3% |
+
+La reducción medida (-44.3% en deep-dive) coincide casi exactamente con la proyección de la
+sección 5.1 (-44.3% proyectado sobre una corrida distinta del generador, 2.48x→1.38x) — confirma
+que la causa raíz estaba correctamente diagnosticada, no solo estimada. El resultado real termina
+mejor que lo proyectado (1.18x aquí vs. 1.38x proyectado) porque esta corrida del generador dio un
+modelo con relación bytes-por-tabla distinta; la comparación válida es el porcentaje de reducción
+compacto-vs-pretty (-44.3%, estable entre corridas), no el ratio absoluto contra TMDL crudo (que
+depende del modelo puntual generado).
+
+**Conclusión honesta:** "tabla específica" queda prácticamente en paridad con el TMDL crudo (1.13x)
+combinando este fix con el de `get_table()` de la sección 5.1 — la app de auditoría/lectura ya no
+paga una penalización de tokens significativa en el caso de uso más común (una tabla puntual).
+"Deep-dive completo" mejora sustancialmente (2.12x → 1.18x) pero sigue sin ser una victoria neta
+contra el TMDL crudo en este modelo sintético particular — consistente con la explicación ya dada
+en la sección 5.1 (el generador produce TMDL limpio, sin `lineageTag`/`annotations` que un export
+real de Power BI Desktop sí tiene y que `pbi-docs` descarta). **El conteo real de tokens vía API
+de Anthropic (`scripts/count_tokens.py`) sigue bloqueado** por falta de `ANTHROPIC_API_KEY`/paquete
+`anthropic` en este entorno — las cifras de esta sección, como las de toda la sección 5, son bytes
+medidos directamente, no tokens reales.
+
+---
+
 ## 6. Scope gaps no ejercitados (por decisión, no por descuido)
 
 Por decisión explícita antes de generar el modelo sintético, éste **no** incluye RLS/roles, perspectives ni calculation groups — están fuera del scope del parser v1 (ver `CLAUDE.md` sección 1) y ampliarlo no era el objetivo de esta fase. Si en el futuro se decide ampliar el parser, esa validación de escala debería repetirse con un modelo que sí los incluya.
@@ -168,10 +207,11 @@ Por decisión explícita antes de generar el modelo sintético, éste **no** inc
 
 1. **El pipeline no se rompe a 60 tablas / 288 measures** — tiempos siguen siendo sub-segundo.
 2. **`--index-format auto` pierde su valor diferencial a esta escala** (converge a `toon` puro) — no es un defecto, es el resultado correcto de una decisión por-tabla en un modelo donde todas las tablas superan el umbral. **Cerrado el 2026-07-20**, ver sección 5.1.
-3. **La narrativa de "ahorro de tokens" necesita matiz por escala**: el escenario overview sigue ganando fuerte, pero "tabla específica" y "deep-dive" se invertían en un modelo de 60 tablas frente a uno de 7 — el costo fijo de `index.json` crece con el número de tablas. **Parcialmente resuelto el 2026-07-20** (ver sección 5.1): `resolver.get_table()` ya no paga ese costo fijo en consultas puntuales (10.34x → 2.00x en "tabla específica"), pero "deep-dive completo" no se mueve con este fix por diseño (necesita genuinamente la lista completa de tablas) y queda un hallazgo #3 nuevo, ya diagnosticado con datos: `indent=2` en `json.dump()` explica un -44.3% de reducción potencial si se remueve, pero no cierra la brecha completa por sí solo.
+3. **La narrativa de "ahorro de tokens" necesita matiz por escala**: el escenario overview sigue ganando fuerte, pero "tabla específica" y "deep-dive" se invertían en un modelo de 60 tablas frente a uno de 7 — el costo fijo de `index.json` crece con el número de tablas. **Resuelto en dos pasadas**: `resolver.get_table()` ya no paga ese costo fijo en consultas puntuales (2026-07-20, sección 5.1: 10.34x → 2.00x en "tabla específica"), y la salida indexada es compacta por defecto desde 2026-07-21 (sección 5.2: 2.00x → 1.13x en "tabla específica", 2.12x → 1.18x en "deep-dive completo", -44.3% medido, no solo proyectado). "Tabla específica" queda en paridad práctica con el TMDL crudo; "deep-dive completo" mejora fuerte pero no revierte a victoria neta en este modelo sintético (ver sección 5.2 para el por qué).
 4. **`find_measure_usages(transitive=True)` no escalaba bien — ya corregido.** Releer el modelo completo en cada salto BFS era aceptable a 7 tablas, notorio a 60. Fix aplicado (una sola lectura cacheada, no por salto), verificado con test determinista de call-count. Un bug del generador sintético (nombres de measure duplicados entre tablas) se descubrió en el proceso y también se corrigió — ver sección 5 para el detalle de por qué el número original de 1.6s no debe tomarse como una medición limpia del efecto aislado.
 
-Los hallazgos 2 y 3 no bloquean seguir con las fases 2-3 del plan (MCP como pre-check, hook de CI)
-— son matices a tener en cuenta al reportar cifras de ahorro de tokens hacia adelante. Los
-hallazgos 2 (parcial) y 4 (resolver) ya se resolvieron; el hallazgo 3 nuevo (`indent=2` +
-ausencia de ruido en TMDL sintético) queda documentado, no implementado — ver sección 5.1.
+Los hallazgos 2, 3 y 4 (índice/costo fijo, `indent=2`, rendimiento del resolver) ya se resolvieron
+— ver secciones 5, 5.1 y 5.2 para el detalle de cada corrección. El conteo real de tokens vía API
+de Anthropic sigue bloqueado por falta de credenciales en este entorno (todas las cifras de este
+reporte son bytes medidos, no tokens); queda pendiente para cuando haya `ANTHROPIC_API_KEY`
+disponible.

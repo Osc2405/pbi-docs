@@ -1,6 +1,9 @@
 """Tests for pbi_extractor.diff — content-aware comparison of two cleaned_metadata dicts."""
 
-from pbi_extractor.diff import diff_models
+import json
+
+from pbi_extractor.diff import diff_models, diff_impact, diff_with_impact
+from pbi_extractor.indexed_output import write_indexed_output
 
 
 def _measure(name, expression="SUM(Sales[Amount])", format_string="$#,0",
@@ -175,3 +178,94 @@ def test_relationship_is_active_change():
     meta_b = _meta(relationships=[_relationship("Sales", "DateKey", "Date", "Date", is_active=False)])
     diff = diff_models(meta_a, meta_b)
     assert diff["relationships_modified"][0]["changes"]["is_active"] == {"old": True, "new": False}
+
+
+# ---------------------------------------------------------------------------
+# Impact analysis (diff_impact / diff_with_impact) — connects diff.py to
+# resolver.find_measure_usages() so "what changed" also answers "who breaks".
+# ---------------------------------------------------------------------------
+
+def _write_model_dir(tmp_path, name, meta):
+    """Write a minimal but real pbi-docs output dir (tables/*.json +
+    metadata.json) so resolver.find_measure_usages() can be pointed at it."""
+    model_dir = tmp_path / name
+    model_dir.mkdir()
+    write_indexed_output(meta, model_dir, source_format="pbit")
+    with open(model_dir / "metadata.json", "w", encoding="utf-8") as f:
+        json.dump(meta, f)
+    return model_dir
+
+
+def test_diff_impact_removed_measure_reports_usages_from_old_model(tmp_path):
+    meta_a = _meta(tables=[_table("Sales", measures=[
+        _measure("Total Sales"),
+        _measure("Margin", expression="[Total Sales] * 0.1"),
+    ])])
+    meta_b = _meta(tables=[_table("Sales", measures=[
+        _measure("Margin", expression="[Total Sales] * 0.1"),
+    ])])
+    model_dir_a = _write_model_dir(tmp_path, "a", meta_a)
+    model_dir_b = _write_model_dir(tmp_path, "b", meta_b)
+
+    diff = diff_models(meta_a, meta_b)
+    assert diff["measures_removed"] == [("Sales", "Total Sales")]
+
+    impact = diff_impact(diff, model_dir_a, model_dir_b)
+    assert impact["measures_removed_impact"] == [
+        {"table": "Sales", "name": "Total Sales",
+         "used_by": [{"table": "Sales", "name": "Margin"}]}
+    ]
+    assert impact["measures_modified_impact"] == []
+
+
+def test_diff_impact_modified_measure_reports_usages_from_new_model(tmp_path):
+    meta_a = _meta(tables=[_table("Sales", measures=[
+        _measure("Total Sales", format_string="$#,0"),
+        _measure("Margin", expression="[Total Sales] * 0.1"),
+    ])])
+    meta_b = _meta(tables=[_table("Sales", measures=[
+        _measure("Total Sales", format_string="0.00%"),
+        _measure("Margin", expression="[Total Sales] * 0.1"),
+    ])])
+    model_dir_a = _write_model_dir(tmp_path, "a", meta_a)
+    model_dir_b = _write_model_dir(tmp_path, "b", meta_b)
+
+    diff = diff_models(meta_a, meta_b)
+    assert len(diff["measures_modified"]) == 1
+
+    impact = diff_impact(diff, model_dir_a, model_dir_b)
+    assert impact["measures_modified_impact"] == [
+        {"table": "Sales", "name": "Total Sales",
+         "used_by": [{"table": "Sales", "name": "Margin"}]}
+    ]
+    assert impact["measures_removed_impact"] == []
+
+
+def test_diff_impact_measure_with_no_usages_is_empty_list(tmp_path):
+    meta_a = _meta(tables=[_table("Sales", measures=[_measure("Unused")])])
+    meta_b = _meta(tables=[_table("Sales", measures=[])])
+    model_dir_a = _write_model_dir(tmp_path, "a", meta_a)
+    model_dir_b = _write_model_dir(tmp_path, "b", meta_b)
+
+    diff = diff_models(meta_a, meta_b)
+    impact = diff_impact(diff, model_dir_a, model_dir_b)
+    assert impact["measures_removed_impact"] == [
+        {"table": "Sales", "name": "Unused", "used_by": []}
+    ]
+
+
+def test_diff_with_impact_matches_manual_composition(tmp_path):
+    meta_a = _meta(tables=[_table("Sales", measures=[
+        _measure("Total Sales"),
+        _measure("Margin", expression="[Total Sales] * 0.1"),
+    ])])
+    meta_b = _meta(tables=[_table("Sales", measures=[
+        _measure("Margin", expression="[Total Sales] * 0.1"),
+    ])])
+    model_dir_a = _write_model_dir(tmp_path, "a", meta_a)
+    model_dir_b = _write_model_dir(tmp_path, "b", meta_b)
+
+    combined = diff_with_impact(model_dir_a, model_dir_b)
+    manual = diff_models(meta_a, meta_b)
+    manual.update(diff_impact(manual, model_dir_a, model_dir_b))
+    assert combined == manual
