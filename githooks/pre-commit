@@ -1,0 +1,16 @@
+#!/bin/sh
+# Pre-commit guard for Power BI model repos — see ../docs/pre_commit_hook.md.
+# Thin shim: keeps the actual logic in Python (cross-platform, consistent
+# with the rest of this project) and this file minimal. Skip once with:
+#   git commit --no-verify
+
+hook_dir=$(dirname "$0")
+
+if command -v python3 >/dev/null 2>&1; then
+    exec python3 "$hook_dir/check_pbip_diff_impact.py"
+elif command -v python >/dev/null 2>&1; then
+    exec python "$hook_dir/check_pbip_diff_impact.py"
+else
+    echo "Warning: python not found on PATH — skipping pbip diff-impact check." >&2
+    exit 0
+fi

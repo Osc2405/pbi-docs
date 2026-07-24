@@ -1,0 +1,83 @@
+# Git pre-commit hook: block commits that break measure dependencies
+
+Reference implementation under [`githooks/`](../githooks/) for repos that version Power BI
+models (`.pbip`/`.pbit`) and want a local, pre-commit gate on top of `pbi-docs --diff
+--diff-impact --transitive` — catching a removed or modified measure that other measures still
+depend on, before it's committed.
+
+This is a template to copy into **that** repo, not a hook this repo (`pbi-docs`) runs on itself
+— `pbi-docs`'s own repository only has static test fixtures, not actively-edited Power BI models.
+
+## What it does
+
+1. Looks at what's **staged** for commit (`git diff --cached`, not the working tree — a partial
+   `git add` is respected).
+2. For every distinct `.pbip`/`.pbit`/`.SemanticModel` project touched, compares the staged
+   version against `HEAD` using `pbi-docs --diff --diff-impact --transitive`.
+3. If a removed or modified measure is still referenced by another measure (`used_by` non-empty
+   in the diff's `measures_removed_impact`/`measures_modified_impact`), it prints the detail and
+   **blocks the commit** (exit 1).
+4. If nothing Power BI-shaped is staged, or nothing broke, the commit proceeds normally.
+
+`.Report/` (PBIR — the visual report definition) is ignored; only the semantic model is checked,
+consistent with the rest of `pbi-docs`'s scope.
+
+## Install
+
+One command per clone — `core.hooksPath` is a real git config option (git ≥ 2.9), no framework
+needed:
+
+```bash
+git config core.hooksPath githooks
+```
+
+To remove it later: `git config --unset core.hooksPath`.
+
+### Prerequisite: `pbi-docs` itself
+
+The hook shells out to the `pbi-docs` command. **`pbi-docs` is not yet published to PyPI** — do
+not run `pip install pbi-docs`, it won't find anything. Install it one of two ways:
+
+```bash
+# Local editable install (if you have this repo checked out)
+pip install -e .
+
+# From a specific tag on GitHub (until a PyPI release exists)
+pip install git+https://github.com/Osc2405/pbi-docs.git@<tag>
+```
+
+If `pbi-docs` isn't found on `PATH`, the hook falls back to `python -m pbi_extractor.cli` using
+the same Python interpreter that's running the hook (handles the common case where pip's
+`Scripts`/`bin` directory isn't on `PATH` but the package is still importable).
+
+**If neither works, the hook fails open**: it prints a warning and lets the commit through rather
+than blocking every contributor who hasn't installed `pbi-docs` yet. It only blocks on an
+*actual detected breaking impact*, never on its own missing prerequisites.
+
+## Skip it for one commit
+
+Git's native escape hatch already covers this — no custom flag needed:
+
+```bash
+git commit --no-verify -m "..."
+```
+
+## Why staged vs HEAD, not working tree vs HEAD
+
+`pbi-docs --diff` takes two filesystem paths, not git refs, so both versions have to be
+materialized as real directories. The hook does this with `git archive` (for `HEAD`) and
+`git write-tree` + `git archive` (for the index) into temp directories, rather than just pointing
+at the working copy on disk — so a partial `git add` (staging only some of your changes) is
+checked as what will *actually* be committed, not what happens to be sitting in your working
+directory.
+
+## Files
+
+- `githooks/pre-commit` — the hook git actually executes. A thin POSIX `sh` shim (works under Git
+  Bash on Windows) that just calls the Python script below.
+- `githooks/check_pbip_diff_impact.py` — all the logic: detecting which projects changed,
+  materializing base/staged versions, calling `pbi-docs`, deciding pass/fail.
+
+See `tests/test_githooks_pbip_diff.py` in the `pbi-docs` repo for the test suite this was built
+against, including a real end-to-end case (a temp git repo, a measure removed that another
+measure references, asserting the commit is blocked).
