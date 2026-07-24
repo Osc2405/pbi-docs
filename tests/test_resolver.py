@@ -93,6 +93,12 @@ def test_get_table_json_toon_parity(json_dir, toon_dir):
     from_json = get_table(json_dir, "Sales")
     from_toon = get_table(toon_dir, "Sales")
     assert from_json == from_toon
+    assert from_json["partition_count"] == from_toon["partition_count"] == 1
+
+
+def test_get_table_partition_count(json_dir):
+    table = get_table(json_dir, "Sales")
+    assert table["partition_count"] == 1
 
 
 def test_get_table_measure_shape(json_dir):

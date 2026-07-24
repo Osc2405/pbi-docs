@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Real answer-quality validation experiment** (`scripts/answer_quality_gemini.py`, dev-only, same treatment as above) — tests whether pbi-docs's compressed context preserves answer correctness, not just token savings, using real Gemini function calling (not Claude Code subagents) against 20 business questions on `Sales Sample.pbip` (11 tables/29 measures). Results: 70%/90%/95% accuracy for raw TMDL / pbi-docs JSON / function-calling conditions respectively — the function-calling condition wins on accuracy AND token cost simultaneously (89.9% token reduction vs. raw TMDL, no trade-off between cheap and correct). See `docs/answer_quality_gemini_report.md`. Question set reused from `docs/human_validation_protocol.md` section 5, with one reference answer corrected after the experiment found it incomplete.
 
+### Fixed
+
+- **`partition_count` never reached `index.json`/`tables/*.json`** — computed correctly in `processor.py`, but silently dropped by all three `indexed_output.py` table-entry builders and stripped again by `resolver.get_table()`'s field allowlist, making it invisible to the resolver and MCP server regardless of source format. Found via the answer-quality experiment above (a question about tables with zero partitions failed in every tested condition, one burning 12 function-calling round-trips trying to find it). Fixed across `indexed_output.py` and `resolver.py`; additive field with a safe default, no `index.json` version bump needed (see `docs/index-json-spec.md`).
+
 ## [1.0.0] - 2026-07-21
 
 ### Added

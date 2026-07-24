@@ -33,7 +33,7 @@ TOOLS = [
     {
         "name": "list_tables",
         "description": "List tables in the model with hidden/technical flags, column/measure "
-                        "counts, and measure categories present. Optionally filter.",
+                        "counts, partition counts, and measure categories present. Optionally filter.",
         "inputSchema": {
             "type": "object",
             "properties": {

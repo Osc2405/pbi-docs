@@ -46,6 +46,12 @@ def test_build_index_table_entry_fields(metadata):
     assert entry["measure_count"] == 2
     assert entry["is_hidden"] is False
     assert entry["path"] == "tables/Sales.json"
+    assert entry["partition_count"] == 1
+
+
+def test_build_index_partition_count_defaults_to_zero_when_missing():
+    idx = build_index({"tables": [_table(5, 0)]}, "pbip")
+    assert idx["tables"][0]["partition_count"] == 0
 
 
 def test_build_index_hidden_table(metadata):
@@ -108,6 +114,24 @@ def test_table_json_content(tmp_path, metadata):
     assert len(sales["columns"]) == 3
     assert len(sales["measures"]) == 2
     assert "formatted_expression" in sales["measures"][0]
+    assert sales["partition_count"] == 1
+
+
+def test_table_toon_content_partition_count(tmp_path, metadata):
+    write_indexed_output(metadata, tmp_path, "pbip", index_format="toon")
+    with open(tmp_path / "tables" / "Sales.json", encoding="utf-8") as f:
+        sales = json.load(f)
+    assert sales["partition_count"] == 1
+    assert isinstance(sales["partition_count"], int)
+
+
+def test_index_json_table_entries_have_partition_count(tmp_path, metadata):
+    write_indexed_output(metadata, tmp_path, "pbip")
+    with open(tmp_path / "index.json", encoding="utf-8") as f:
+        idx = json.load(f)
+    for entry in idx["tables"]:
+        assert "partition_count" in entry
+        assert entry["partition_count"] >= 0
 
 
 def test_relationships_json_content(tmp_path, metadata):

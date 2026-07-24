@@ -141,6 +141,7 @@ def get_table(model_dir: Path, table_name: str, *, include_dax: bool = True) -> 
         "name": detail["name"],
         "is_hidden": detail.get("is_hidden", False),
         "is_technical": detail.get("is_technical", False),
+        "partition_count": detail.get("partition_count", 0),
         "columns": columns,
         "measures": measures,
     }

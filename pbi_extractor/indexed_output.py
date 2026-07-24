@@ -85,6 +85,7 @@ def _table_entry_json(t: dict) -> dict:
         "name": t["name"],
         "is_hidden": t.get("is_hidden", False),
         "is_technical": t.get("is_technical", False),
+        "partition_count": t.get("partition_count", 0),
         "columns": t.get("columns", []),
         "measures": t.get("measures", []),
     }
@@ -113,6 +114,7 @@ def _table_entry_toon(t: dict) -> dict:
         "name": t["name"],
         "is_hidden": t.get("is_hidden", False),
         "is_technical": t.get("is_technical", False),
+        "partition_count": t.get("partition_count", 0),
         "columns": encode_toon(t.get("columns", []), _COLUMN_TOON_FIELDS),
         "measures_flat": encode_toon(
             [_flat_measure(m) for m in measures],
@@ -153,6 +155,7 @@ def build_index(cleaned_metadata: dict, source_format: str,
             "name": name,
             "is_hidden": t.get("is_hidden", False),
             "is_technical": t.get("is_technical", False),
+            "partition_count": t.get("partition_count", 0),
             "column_count": len(t.get("columns", [])),
             "measure_count": len(t.get("measures", [])),
             "categories": _table_categories(t),

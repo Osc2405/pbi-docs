@@ -242,6 +242,26 @@ el 429 en vez de adivinar el tiempo de espera.
 
 ---
 
+### Actualización 2026-07-23 — Fix: `partition_count` ahora expuesto en `index.json`/`tables/*.json`
+
+Cierra el gap documentado en la sección anterior (`docs/answer_quality_gemini_report.md` sección
+3.1, pregunta 15 fallida en las 3 condiciones). `pbi_extractor/indexed_output.py`
+(`_table_entry_json`, `_table_entry_toon`, `build_index`) y `pbi_extractor/resolver.py`
+(`get_table`) ahora propagan `partition_count` desde `cleaned_metadata` hasta
+`index.json`/`tables/*.json`, vía `.get("partition_count", 0)` para no romper fixtures/dicts
+construidos a mano sin el campo. `resolver.list_tables()` no necesitó cambios — no filtra campos,
+solo filas. Descripción del tool MCP `list_tables` actualizada para mencionarlo. Campo aditivo, no
+requiere bump de `index.json`'s `"version"` (`docs/index-json-spec.md`). 4 tests nuevos en
+`tests/test_indexed_output.py`/`tests/test_resolver.py`, incluida paridad JSON/TOON específica del
+campo — 226 tests, todos en verde.
+
+**Verificado end-to-end contra el modelo real del experimento**, no solo con tests unitarios:
+regenerando `output/Sales Sample/` y corriendo `pbi-docs --query ... --list-tables`, las tablas
+`Smart Calcs` y `Time Intelligence` aparecen con `partition_count: 0` — exactamente la respuesta
+de referencia de la pregunta 15 que fallaba antes del fix.
+
+---
+
 ## 0. Contexto del proyecto (no re-investigar, ya validado)
 
 `pbi-docs` es un extractor y documentador de modelos de Power BI, 100% Python, cero dependencias
