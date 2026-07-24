@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Gemini provider in `scripts/count_tokens.py`** (`--provider gemini`, dev-only script, not part of the package or `pyproject.toml` — same treatment as Graphify, `CLAUDE.md` section 3) — real token counts via the free-tier Gemini API (`google-genai` SDK), alongside the existing Anthropic provider. Used to replace the chars÷4 approximation in `docs/token_optimization_report.md` with real figures across all 3 scenarios on `Supply Chain Sample.pbip`: confirms the approximation's direction but underestimates pbi-docs's real savings by 5-27 points — most notably, TOON's aggregate advantage over JSON is real and substantial (-22.4%) where the approximation showed it as marginal (-3.4%).
+
 ## [1.0.0] - 2026-07-21
 
 ### Added

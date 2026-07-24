@@ -153,6 +153,54 @@ Suite completa: 203 tests, todos en verde.
 
 ---
 
+### Actualización 2026-07-23 — Conteo real de tokens vía Gemini (segundo proveedor, no resuelve bloqueo Anthropic)
+
+`scripts/count_tokens.py` (dev-only, mismo tratamiento que Graphify — no es dependencia del
+paquete) ahora soporta `--provider anthropic|gemini` (antes solo Anthropic, sin flag). Se agregó
+porque el usuario consiguió una API key de Gemini (capa gratuita) pero sigue sin una de Anthropic.
+`_iter_files()` y la lógica de combinar archivos no cambiaron — solo se agregó despacho por
+proveedor (`PROVIDERS` dict, funciones `_count_anthropic`/`_count_gemini` con lazy import cada
+una). Requiere `pip install google-genai` y `GEMINI_API_KEY`; usa el SDK unificado `google-genai`
+(no el `google-generativeai` antiguo), método `client.models.count_tokens()` — mismo tipo de
+endpoint gratuito (sin costo de generación) que `count_tokens` de Anthropic.
+
+Se actualizó `docs/token_optimization_report.md` (modelo Supply Chain Sample, 7 tablas) con una
+columna nueva para tokens reales de Gemini en las 3 tablas de escenario — los 3 escenarios
+completos, con el usuario corriendo los comandos con su key:
+- **Escenario 1** (overview): 10,590 / 47,296 / 830 tokens — ahorro real 92.2% (vs 91.0% aprox.).
+- **Escenario 2** (tabla `Backorder Percentage`, la más grande): 2,310 raw / 797 JSON / 527 TOON —
+  ahorro real JSON 65.5%, TOON 77.2% (vs 35.4%/46.0% aprox.); **TOON vs JSON real: -33.9%** (vs
+  -16.5% aprox.) — con tokenizador real, TOON gana el doble de lo que sugería chars÷4 en esta tabla.
+- **Escenario 3** (deep-dive completo): 10,590 raw / 2,339 JSON / 1,815 TOON / 4,141
+  `metadata.json` — ahorro real JSON 77.9%, TOON 82.9% (vs 52.7%/54.3% aprox.). **Hallazgo
+  principal de la sesión: TOON vs JSON agregado real es -22.4% (vs -3.4% aprox.)** — la
+  aproximación caracteres÷4 hacía ver el ahorro agregado de TOON como marginal y concentrado solo
+  en la tabla grande; con tokenizador real, TOON gana de forma consistente también en agregado.
+  Sección 5 del informe actualizada con este matiz (no contradice la sección 4 — TOON tabla por
+  tabla en tablas chicas sigue midiéndose en aproximación, no se remidió).
+
+**Hallazgo de método, no solo tokenizador:** las columnas `Bytes`/`Tokens aprox.` de JSON/TOON en
+este informe se midieron el 2026-07-15, antes de que `_write_json()` pasara a compacto por
+defecto (hallazgo #3 de `docs/scale_validation_report.md`, resuelto 2026-07-20). El `output/`
+regenerado para esta corrida ya es compacto (`separators=(",",":")`, sin `indent=2`), así que
+parte de la caída real-vs-aproximación en las filas JSON/TOON es el cambio de formato, no solo
+diferencia de tokenizador — documentado explícitamente en el informe para no confundir ambos
+efectos. Aparte, el `Bytes` que imprime el script también normaliza CRLF→LF al leer en modo
+texto, por lo que tampoco coincide byte a byte con `os.path.getsize` del disco — otra diferencia
+de método, no un bug.
+
+**No se tocó** `docs/scale_validation_report.md` (modelo sintético de 60 tablas) — queda fuera de
+alcance de esta sesión.
+
+**Esto no resuelve el bloqueo de Anthropic** documentado desde 2026-07-16 — sigue bloqueado, sin
+`ANTHROPIC_API_KEY`. El tokenizador de Gemini no es el de Claude; esto es un segundo punto de dato
+real de un proveedor distinto, útil para verificar la heurística caracteres÷4 en general, y un
+paso parcial hacia cerrar la limitación de "un solo proveedor" de
+`docs/precision_validation_report.md` sección 6 (que es sobre calidad de respuesta, no sobre
+conteo de tokens — sigue sin validar ahí).
+
+---
+
 ## 0. Contexto del proyecto (no re-investigar, ya validado)
 
 `pbi-docs` es un extractor y documentador de modelos de Power BI, 100% Python, cero dependencias
