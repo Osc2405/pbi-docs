@@ -407,7 +407,12 @@ def parse_pbip_model(input_path: str) -> dict:
 
     Raises:
         SemanticModelNotFoundError: if the .SemanticModel/ folder cannot be located
-        TmdlParseError: if a .tmdl file cannot be parsed
+        TmdlParseError: if the relationships file (relationships.tmdl or
+            model.tmdl) cannot be parsed. A single corrupt table file under
+            tables/ is NOT fatal — it is skipped with a printed warning and
+            excluded from the result, matching how .pbit tolerates a bad
+            row/table (see processor.py); only the shared relationships file
+            aborts the whole model, since it isn't a per-item loop.
         PBIPExtractionError: for any other unexpected error
     """
     sm_dir = find_semantic_model(input_path)
@@ -421,14 +426,15 @@ def parse_pbip_model(input_path: str) -> dict:
         tables_dir = definition_dir / "tables"
         if tables_dir.exists():
             for tmdl_file in sorted(tables_dir.glob("*.tmdl")):
+                # A single corrupt table file must not abort the whole model —
+                # matches processor.py's row-level "skip and warn" philosophy
+                # for .pbit (see Pruebas/auditoria_general_2026-07-24.md P1 #3:
+                # before this fix, .pbit survived a bad row/table but .pbip
+                # aborted entirely on the same class of problem).
                 try:
                     tables.append(_parse_table_tmdl_file(tmdl_file))
-                except TmdlParseError:
-                    raise
                 except Exception as exc:
-                    raise TmdlParseError(
-                        f"Error parsing table file '{tmdl_file.name}': {exc}"
-                    ) from exc
+                    print(f"Warning: Error parsing table file '{tmdl_file.name}': {exc}")
 
         # Relationships live either in a standalone relationships.tmdl or
         # embedded in model.tmdl, depending on TMDL version. Prefer the

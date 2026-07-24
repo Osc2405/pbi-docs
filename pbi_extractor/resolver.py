@@ -13,9 +13,8 @@ import re
 from pathlib import Path
 from typing import List, Optional
 
-from .indexed_output import _safe_filename
+from .indexed_output import safe_filename, flatten_measure
 from .toon_encoder import decode_toon
-from .formatters import categorize_dax_complexity
 
 
 class ResolverError(Exception):
@@ -23,11 +22,29 @@ class ResolverError(Exception):
     pass
 
 
+# path (resolved, as str) -> (mtime, parsed dict). mcp_server.py binds one
+# long-lived process to one model_dir and calls resolver functions repeatedly
+# (list/search operations call get_table() once per table each time) — every
+# call used to re-read and re-parse the same files from disk with no reuse
+# across calls (docs/scale_validation_report.md section 5 fixed the same
+# problem only *within* a single transitive call, not across separate tool
+# calls). Keyed by mtime rather than cached forever so reprocessing a model
+# while a server is bound to it is picked up instead of serving stale data.
+_JSON_CACHE: dict = {}
+
+
 def _load_json(path: Path) -> dict:
     if not path.exists():
         raise ResolverError(f"Not found: {path}. Run pbi-docs on the model first.")
+    key = str(path.resolve())
+    mtime = path.stat().st_mtime
+    cached = _JSON_CACHE.get(key)
+    if cached is not None and cached[0] == mtime:
+        return cached[1]
     with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+    _JSON_CACHE[key] = (mtime, data)
+    return data
 
 
 def _maybe_decode(value):
@@ -75,19 +92,19 @@ def get_table(model_dir: Path, table_name: str, *, include_dax: bool = True) -> 
     """
     model_dir = Path(model_dir)
 
-    # The table's filename is fully determined by its name (_safe_filename is
+    # The table's filename is fully determined by its name (safe_filename is
     # a pure function), so a point lookup never needs index.json on the happy
     # path — only load it as a fallback to build the "available tables" error
     # message once we already know the direct read failed. At model scale,
     # index.json's fixed cost dwarfs a single table file (docs/scale_validation_report.md
     # section 4: it was ~10x the size of the table being looked up on a
     # 60-table model), so skipping it here is the fix for that finding.
-    fname = _safe_filename(table_name) + ".json"
+    fname = safe_filename(table_name) + ".json"
     table_path = model_dir / "tables" / fname
     detail = None
     if table_path.exists():
         candidate = _load_json(table_path)
-        # _safe_filename() isn't guaranteed collision-free (two differently
+        # safe_filename() isn't guaranteed collision-free (two differently
         # named tables could sanitize to the same filename), so confirm the
         # file we found is actually this table before trusting it.
         if candidate.get("name") == table_name:
@@ -102,34 +119,23 @@ def get_table(model_dir: Path, table_name: str, *, include_dax: bool = True) -> 
     # Normalize to one canonical shape regardless of source format: JSON
     # measures carry raw `expression` and no `complexity`; TOON measures
     # (measures_flat + measures_dax) carry `complexity` and no raw
-    # `expression`. Build the same 7 keys either way.
+    # `expression`. Build the same 7 keys either way, using
+    # indexed_output.flatten_measure() as the single source of truth for the
+    # first 6 (see CHANGELOG: this used to be duplicated field-by-field here).
     if "measures_flat" in detail:
+        # Already written via flatten_measure()+MEASURE_FLAT_FIELDS at
+        # indexed_output.py write time, so the decoded rows already carry
+        # exactly the 6 canonical keys — just attach the DAX body.
         flat = _maybe_decode(detail["measures_flat"])
         dax_by_name = {m["name"]: m.get("formatted_expression", "")
                        for m in detail.get("measures_dax", [])}
         measures = [
-            {
-                "name": m["name"],
-                "category": m.get("category", "other"),
-                "complexity": m.get("complexity", ""),
-                "is_hidden": m.get("is_hidden", False),
-                "format_string": m.get("format_string", ""),
-                "display_folder": m.get("display_folder", ""),
-                "formatted_expression": dax_by_name.get(m["name"], ""),
-            }
+            {**m, "formatted_expression": dax_by_name.get(m["name"], "")}
             for m in flat
         ]
     else:
         measures = [
-            {
-                "name": m.get("name", ""),
-                "category": m.get("category", "other"),
-                "complexity": categorize_dax_complexity(m.get("expression", "")),
-                "is_hidden": m.get("is_hidden", False),
-                "format_string": m.get("format_string", ""),
-                "display_folder": m.get("display_folder", ""),
-                "formatted_expression": m.get("formatted_expression", ""),
-            }
+            {**flatten_measure(m), "formatted_expression": m.get("formatted_expression", "")}
             for m in detail.get("measures", [])
         ]
 
