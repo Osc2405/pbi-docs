@@ -262,6 +262,50 @@ de referencia de la pregunta 15 que fallaba antes del fix.
 
 ---
 
+### Actualización 2026-07-24 — Hook de pre-commit (referencia) + 4 hallazgos P1 de auditoría general
+
+Sesión originada en una auditoría general de arquitectura/deuda técnica/cobertura de tests
+(`Pruebas/auditoria_general_2026-07-24.md`, nota local gitignoreada — no versionada, igual
+tratamiento que otras notas de auditoría previas). De ahí salieron una feature nueva y varios
+fixes, todos con 283 tests en verde al cierre:
+
+- **Hook de pre-commit de referencia** (`githooks/`, no es parte del paquete instalable — plantilla
+  para repos que versionan modelos `.pbip`/`.pbit`, ver `docs/pre_commit_hook.md`). Bloquea un
+  commit que borra o modifica una measure de la que otra measure todavía depende, usando
+  `pbi-docs --diff --diff-impact --transitive`. Compara el contenido *staged* contra `HEAD` (no el
+  working tree — respeta un `git add` parcial) materializando ambas versiones vía `git
+  archive`/`git write-tree` en directorios temporales, porque `--diff` toma paths de filesystem,
+  no refs de git. Falla abierto (advierte, deja pasar el commit) si `pbi-docs` no está instalado o
+  falla inesperadamente. Instalación: `git config core.hooksPath githooks`. 17 tests en
+  `tests/test_githooks_pbip_diff.py`, incluyendo casos end-to-end reales (repo git temporal,
+  subprocess real de `pbi-docs`).
+- **Bug real encontrado construyendo el hook**: `--diff --diff-impact` corrompía silenciosamente
+  su propio campo `used_by` cuando `a_path` y `b_path` compartían el mismo nombre de modelo —
+  exactamente el caso "mismo proyecto, dos checkouts" que el hook ejercita. La segunda llamada a
+  `process_file()` sobreescribía el output de la primera antes de que `diff_impact()` la leyera de
+  vuelta, dando `used_by` vacío sin importar dependencias reales — una respuesta silenciosamente
+  incorrecta, no un crash, así que la suite existente no lo detectaba. Corregido en `cli.py`:
+  el output de `b` va a un subdirectorio `_diff_b` cuando los nombres colisionan.
+- **4 hallazgos P1 de la misma auditoría**, todos corregidos: (1) un archivo de tabla `.tmdl`
+  corrupto en `.pbip` abortaba todo el modelo en vez de solo advertir y saltarlo, como ya hacía
+  `.pbit` — alineado; (2) la forma "flat" de una measure estaba duplicada en 3 lugares (mismo
+  patrón que causó el bug de `partition_count` de la sección anterior) — centralizada en
+  `flatten_measure()`, usada ahora también por `resolver.get_table()`; (3) `resolver._load_json()`
+  ahora cachea por (path resuelto, mtime), ya que `mcp_server.py` ata un proceso de larga vida a un
+  directorio de modelo y releía los mismos JSON en cada llamada a tool, sin reuso entre llamadas
+  (el fix de rendimiento del 2026-07-18 solo deduplicaba lecturas *dentro* de un mismo BFS); (4)
+  4 tests nuevos de hardening del parser TMDL (indentación mixta tabs/espacios, DAX anidado
+  profundo) — pasaron sin cambios de código, cerrando un gap de cobertura sin bug real detrás.
+- **Cobertura de tests que no existía**: `extractor.py` (ruta `.pbit`) tenía cero tests y
+  `cli.py --batch` no tenía ninguno — hallazgos P0 de la misma auditoría. Se agregaron
+  `tests/test_extractor.py` (29 tests, fixtures de zip en memoria) y `tests/test_cli_batch.py`
+  (3 tests). Escribir los tests de extractor expuso un bug real: `clean_json_text()` usaba
+  `r"\\1"` (backslash literal + "1") en vez de `r"\1"` (backreference) en sus regex de
+  comentarios/comas colgantes — corrompía en vez de limpiar el JSON cuando el `DataModelSchema`
+  traía comentarios o trailing commas. Corregido.
+
+---
+
 ## 0. Contexto del proyecto (no re-investigar, ya validado)
 
 `pbi-docs` es un extractor y documentador de modelos de Power BI, 100% Python, cero dependencias
