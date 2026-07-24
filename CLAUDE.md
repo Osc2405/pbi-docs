@@ -201,6 +201,47 @@ conteo de tokens — sigue sin validar ahí).
 
 ---
 
+### Actualización 2026-07-23 — Calidad de respuesta con Gemini real (function calling, Sales Sample)
+
+Cierra la parte de "calidad de respuesta" de la limitación de "un solo proveedor" que dejaba
+abierta el bullet anterior. Nuevo experimento: `scripts/answer_quality_gemini.py` (dev-only,
+mismo tratamiento Graphify) corre 20 preguntas de negocio contra `Sales Sample.pbip` (11
+tablas/29 measures) bajo 3 condiciones — A: TMDL crudo, B: JSON de pbi-docs completo, C: Gemini
+elige por su cuenta qué funciones de `resolver.py` llamar (Automatic Function Calling del SDK
+`google-genai`, no un `--query` fijo preseleccionado). Preguntas reusadas de
+`docs/human_validation_protocol.md` sección 5, copia estructurada en
+`scripts/fixtures/sales_sample_questions.json`.
+
+**Resultado real, calificado a mano** (`scripts/fixtures/sales_sample_gemini_results_validados.csv`,
+detalle en `docs/answer_quality_gemini_report.md`): precisión A 70% / B 90% / C 95%; tokens
+totales A 376,159 / B 202,674 / C 37,993 (ahorro C vs A: 89.9%). **Condición C gana en precisión Y
+en costo a la vez** — no hay trade-off entre barato y correcto en este modelo, que es la respuesta
+directa a por qué vale la pena la capa de consulta dirigida (MCP/resolver) sobre un dump completo.
+
+Dos hallazgos de datos en el camino, ambos verificados contra el código/modelo real, no solo
+inferidos de las respuestas:
+- **Gap real de producto, documentado no arreglado por decisión explícita:** `partition_count` se
+  calcula en `processor.py:228` pero `indexed_output.py` nunca lo copia a
+  `index.json`/`tables/*.json` — invisible para `resolver.py` y cualquier tool MCP. Falló en las
+  3 condiciones (en C, Gemini hizo 12 tool calls sin éxito buscándolo). Fix queda para sesión
+  aparte — toca el formato de salida de todos los modelos.
+- **Corrección de referencia:** la pregunta 17 (`docs/human_validation_protocol.md` sección 5)
+  tenía como respuesta "2" measures con "YTD" en el nombre; las 3 condiciones encontraron
+  independientemente una tercera (`Value (ytd)`), confirmada en vivo con
+  `resolver.search_measures()`. Corregido a "3" en el fixture y en la tabla original — la
+  referencia estaba incompleta, no los agentes.
+
+**Notas de implementación** (por si se reusa el patrón en otro script con Gemini): el modelo por
+defecto tuvo que cambiar 3 veces durante la sesión por errores reales de la API —
+`gemini-2.5-flash` (404 para cuentas nuevas en `generateContent`, aunque sigue funcionando para
+`count_tokens`) → `gemini-flash-latest` (resuelve a `gemini-3.6-flash`, cuota gratis de solo 20
+req/día) → `gemini-2.5-flash-lite` (mismo 404) → `gemini-flash-lite-latest` (funcionó). El límite
+real de RPM en la capa gratuita resultó ser 5, no una suposición de diseño — pacing y backoff
+exponencial ajustados con ese dato real, parseando el `retryDelay` que la propia API devuelve en
+el 429 en vez de adivinar el tiempo de espera.
+
+---
+
 ## 0. Contexto del proyecto (no re-investigar, ya validado)
 
 `pbi-docs` es un extractor y documentador de modelos de Power BI, 100% Python, cero dependencias

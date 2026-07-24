@@ -152,7 +152,19 @@ consultas pequeñas en una sola sesión en vez de pocas más dirigidas.**
   brecha de tokens serían más pronunciadas y más representativas.
 - **Un solo tipo de agente** (Claude, vía subagentes del mismo proveedor que ejecuta este
   informe) — no valida generalización a otros LLMs (GPT, Gemini, etc.), aunque pbi-docs es
-  agnóstico por diseño (JSON plano, sin dependencia de ningún SDK de un proveedor).
+  agnóstico por diseño (JSON plano, sin dependencia de ningún SDK de un proveedor). Ver también
+  `docs/token_optimization_report.md` — paso parcial adyacente (soporte Gemini agregado a
+  `scripts/count_tokens.py` para conteo real de tokens con un segundo tokenizador; no valida
+  calidad de respuesta con otro proveedor, esta limitación sigue abierta).
+
+  **Actualización (2026-07-23):** `docs/answer_quality_gemini_report.md` corrió el eje de calidad
+  de respuesta (no solo tokens) con un segundo proveedor real — Gemini, function calling real
+  contra `resolver.py`, no subagentes — sobre `Sales Sample.pbip` (11 tablas), no
+  `Supply Chain Sample.pbip` (7 tablas) usado en este informe, así que no es una comparación 1:1
+  con la tabla de la sección 3, es una medición nueva e independiente. Resultado: 70%/90%/95% de
+  precisión en A/B/C, con Condición C ganando en precisión Y en tokens a la vez. Cierra esta
+  limitación de "un solo proveedor" para el eje de calidad de respuesta — sigue faltando GPT y
+  cualquier otro proveedor más allá de Claude y Gemini.
 - **18 preguntas curadas a mano**, no generadas por un tercero independiente — mitigado por
   calificación objetiva (no hay juicio subjetivo de un LLM), pero el conjunto de preguntas en sí
   podría tener sesgos hacia lo que pbi-docs modela bien.

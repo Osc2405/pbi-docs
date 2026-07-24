@@ -1,0 +1,103 @@
+condition,question_id,difficulty,question,reference_answer,answer_given,tool_calls,prompt_tokens,completion_tokens,total_tokens,grader_verdict
+a,1,facil,¿Cuántas tablas tiene el modelo?,11,NOT_FOUND,0,18784,3,18787,NOT_FOUND
+a,2,facil,¿Cuántas measures tiene el modelo en total?,29,NOT_FOUND,0,18786,3,18789,NOT_FOUND
+a,3,facil,¿Cuántas relaciones existen entre tablas?,5,En el modelo existen 5 relaciones entre tablas.,0,18784,10,18794,Correcta
+a,4,facil,¿La relación entre Sales[Delivery Date] y Calendar[Date] está activa o inactiva?,Inactiva,La relación entre `Sales[Delivery Date]` y `Calendar[Date]` está inactiva (`isActive: false`).,0,18797,24,18821,Correcta
+a,5,facil,"¿Cuál es el format string de la measure ""Sales Amount""?","$ #,##0","$ #,##0",0,18789,5,18794,Correcta
+a,6,media,"¿A qué tabla pertenece la measure ""Margin %""?",Sales,"La medida ""Margin %"" pertenece a la tabla `Sales`.",0,18787,13,18800,Correcta
+a,7,media,"¿Qué expresión DAX tiene la measure ""# Stores""?",COUNTROWS('Store'),"```dax
+COUNTROWS('Store')
+```",0,18787,11,18798,Correcta
+a,8,media,"Listá todas las columnas ocultas (isHidden) de la tabla ""Sales"".","Quantity, CustomerKey, StoreKey, ProductKey, Net Price, Unit Cost (6 columnas)","- Quantity
+- CustomerKey
+- StoreKey
+- ProductKey
+- Net Price
+- Unit Cost",0,18792,22,18814,Correcta
+a,9,media,"¿Qué categoría de negocio (revenue/cost/margin/...) le asigna pbi-docs a la measure ""Cost""?",cost,NOT_FOUND,0,18802,3,18805,NOT_FOUND
+a,10,media,"¿Qué columna de la tabla ""Customer"" tiene tipo de dato dateTime?",Birthday,La columna de la tabla `Customer` que tiene tipo de dato dateTime es `Birthday`.,0,18791,18,18809,Correcta
+a,11,dificil,"En la relación donde Sales.ProductKey es el lado ""muchos"", ¿qué tabla es el lado ""uno""?",Product,Product,0,18800,1,18801,Correcta
+a,12,dificil,"¿Cómo se llama la measure que calcula la diferencia entre ""Sales Amount"" y ""Sales Amount (LY)""?",Sales Amount  (Δ LY) (nota: doble espacio en el nombre real),"La medida que calcula la diferencia entre ""Sales Amount"" y ""Sales Amount (LY)"" se llama `Sales Amount  (Δ LY)` y se encuentra en la tabla `Sales`.",0,18799,37,18836,Correcta
+a,13,dificil,¿Qué measure usa USERELATIONSHIP para activar la relación inactiva de Delivery Date?,Sales Qty by Delivery Date,La measure que usa `USERELATIONSHIP` para activar la relación inactiva de `Delivery Date` es `Sales Qty by Delivery Date` (ubicada en la tabla `Sales`).,0,18795,40,18835,Correcta
+a,14,dificil,"¿Cuántas measures de la tabla ""Sales"" están categorizadas como ""margin""?","4 (Margin, Margin (ly), Margin %, Margin % Overall)",NOT_FOUND,0,18793,3,18796,NOT_FOUND
+a,15,dificil,¿Qué dos tablas tienen partition_count: 0 (sin partición de datos)?,"Smart Calcs, Time Intelligence",NOT_FOUND,0,18794,3,18797,NOT_FOUND
+a,16,dificil,¿Qué measure usa SELECTEDVALUE para construir un selector dinámico de measures?,"Value (tabla ""Dynamic Measure"")",La medida `Value` (ubicada en la tabla `Dynamic Measure`) utiliza `SELECTEDVALUE`.,0,18791,20,18811,Correcta
+a,17,dificil,Buscá todas las measures cuyo nombre contenga 'YTD'. ¿Cuántas hay y cómo se llaman?,"2: ""Sales Amount (YTD)"", ""Sales Amount (YTD, LY)""","Hay 3 measures que contienen 'YTD'. Se llaman:
+1. `Sales Amount (YTD)` (en la tabla `Sales`)
+2. `Sales Amount (YTD, LY)` (en la tabla `Sales`)
+3. `Value (ytd)` (en la tabla `Dynamic Measure`)",0,18799,66,18865,"Correcta - Revisar supuesto ""correcto"""
+a,18,trampa,"¿Cuál es el format string de la measure ""Value"" (tabla ""Dynamic Measure"")?",""""" (vacío — no tiene format string definido)",NOT_FOUND,0,18795,3,18798,NOT_FOUND
+a,19,trampa,"¿Cuál es la expresión DAX de la measure ""Total Revenue""?",NOT_FOUND — esa measure no existe en este modelo,NOT_FOUND,0,18790,3,18793,NOT_FOUND
+a,20,dificil,"¿Qué tabla de hechos se relaciona tanto con ""Customer"" como con ""Store""?",Sales,La tabla de hechos que se relaciona tanto con `Customer` como con `Store` es la tabla `Sales`.,0,18793,23,18816,Correcta
+b,1,facil,¿Cuántas tablas tiene el modelo?,11,El modelo tiene 11 tablas.,0,10109,8,10117,Correcta
+b,2,facil,¿Cuántas measures tiene el modelo en total?,29,El modelo tiene un total de 29 measures.,0,10111,11,10122,Correcta
+b,3,facil,¿Cuántas relaciones existen entre tablas?,5,En el modelo existen 5 relaciones entre tablas.,0,10109,10,10119,Correcta
+b,4,facil,¿La relación entre Sales[Delivery Date] y Calendar[Date] está activa o inactiva?,Inactiva,Inactiva,0,10122,3,10125,Correcta
+b,5,facil,"¿Cuál es el format string de la measure ""Sales Amount""?","$ #,##0","El format string de la measure `Sales Amount` (en la tabla `Sales`) es `$ #,##0`.",0,10114,24,10138,Correcta
+b,6,media,"¿A qué tabla pertenece la measure ""Margin %""?",Sales,"La measure ""Margin %"" pertenece a la tabla `Sales`.",0,10112,13,10125,Correcta
+b,7,media,"¿Qué expresión DAX tiene la measure ""# Stores""?",COUNTROWS('Store'),`COUNTROWS('Store')`,0,10112,7,10119,Correcta
+b,8,media,"Listá todas las columnas ocultas (isHidden) de la tabla ""Sales"".","Quantity, CustomerKey, StoreKey, ProductKey, Net Price, Unit Cost (6 columnas)","- Quantity
+- CustomerKey
+- StoreKey
+- ProductKey
+- Net Price
+- Unit Cost",0,10117,22,10139,Correcta
+b,9,media,"¿Qué categoría de negocio (revenue/cost/margin/...) le asigna pbi-docs a la measure ""Cost""?",cost,cost,0,10127,1,10128,Correcta
+b,10,media,"¿Qué columna de la tabla ""Customer"" tiene tipo de dato dateTime?",Birthday,"La columna de la tabla ""Customer"" con tipo de dato dateTime es ""Birthday"".",0,10116,17,10133,Correcta
+b,11,dificil,"En la relación donde Sales.ProductKey es el lado ""muchos"", ¿qué tabla es el lado ""uno""?",Product,Product,0,10125,1,10126,Correcta
+b,12,dificil,"¿Cómo se llama la measure que calcula la diferencia entre ""Sales Amount"" y ""Sales Amount (LY)""?",Sales Amount  (Δ LY) (nota: doble espacio en el nombre real),La medida se llama `Sales Amount  (Δ LY)` y pertenece a la tabla `Sales`.,0,10124,20,10144,Correcta
+b,13,dificil,¿Qué measure usa USERELATIONSHIP para activar la relación inactiva de Delivery Date?,Sales Qty by Delivery Date,El measure es `Sales Qty by Delivery Date` en la tabla `Sales`.,0,10120,17,10137,Correcta
+b,14,dificil,"¿Cuántas measures de la tabla ""Sales"" están categorizadas como ""margin""?","4 (Margin, Margin (ly), Margin %, Margin % Overall)","En la tabla ""Sales"", hay 4 measures categorizadas como ""margin"":
+
+1. `Margin`
+2. `Margin (ly)`
+3. `Margin %`
+4. `Margin % Overall`",0,10118,45,10163,Correcta
+b,15,dificil,¿Qué dos tablas tienen partition_count: 0 (sin partición de datos)?,"Smart Calcs, Time Intelligence",NOT_FOUND,0,10119,3,10122,NOT_FOUND
+b,16,dificil,¿Qué measure usa SELECTEDVALUE para construir un selector dinámico de measures?,"Value (tabla ""Dynamic Measure"")",La medida `Value` en la tabla `Dynamic Measure`.,0,10116,12,10128,Correcta
+b,17,dificil,Buscá todas las measures cuyo nombre contenga 'YTD'. ¿Cuántas hay y cómo se llaman?,"2: ""Sales Amount (YTD)"", ""Sales Amount (YTD, LY)""","Hay 3 measures que contienen 'YTD' en su nombre:
+1. `Sales Amount (YTD, LY)` (en la tabla `Sales`)
+2. `Sales Amount (YTD)` (en la tabla `Sales`)
+3. `Value (ytd)` (en la tabla `Dynamic Measure`)",0,10124,67,10191,"Correcta, Revisar definicion de correcto"
+b,18,trampa,"¿Cuál es el format string de la measure ""Value"" (tabla ""Dynamic Measure"")?",""""" (vacío — no tiene format string definido)",NOT_FOUND,0,10120,3,10123,NOT_FOUND
+b,19,trampa,"¿Cuál es la expresión DAX de la measure ""Total Revenue""?",NOT_FOUND — esa measure no existe en este modelo,NOT_FOUND,0,10115,3,10118,NOT_FOUND
+b,20,dificil,"¿Qué tabla de hechos se relaciona tanto con ""Customer"" como con ""Store""?",Sales,"La tabla de hechos es `Sales`, la cual se relaciona con `Customer` a través de la columna `CustomerKey` y con `Store` a través de la columna `StoreKey`.",0,10118,39,10157,Correcta
+c,1,facil,¿Cuántas tablas tiene el modelo?,11,"El modelo tiene 11 tablas: About, Calendar, Customer, Dynamic Measure, Parameter - Dimension, Parameter - Measure, Product, Sales, Smart Calcs, Store y Time Intelligence.",1,1303,38,1341,Correcta
+c,2,facil,¿Cuántas measures tiene el modelo en total?,29,"El modelo tiene un total de 29 measures (distribuídas en las tablas: Customer: 1, Dynamic Measure: 7, Product: 1, Sales: 19, Store: 1).",1,1305,45,1350,Correcta
+c,3,facil,¿Cuántas relaciones existen entre tablas?,5,Existen 5 relaciones entre tablas en el modelo (4 activas y 1 inactiva).,1,1014,21,1035,Correcta
+c,4,facil,¿La relación entre Sales[Delivery Date] y Calendar[Date] está activa o inactiva?,Inactiva,La relación entre `Sales[Delivery Date]` y `Calendar[Date]` está **inactiva** (`is_active: false`).,1,1033,28,1061,Correcta
+c,5,facil,"¿Cuál es el format string de la measure ""Sales Amount""?","$ #,##0","El format string de la medida `Sales Amount` (en la tabla `Sales`) es:
+`$ #,##0`",2,1346,27,1373,Correcta
+c,6,media,"¿A qué tabla pertenece la measure ""Margin %""?",Sales,"La measure ""Margin %"" pertenece a la tabla **Sales**.",1,836,13,849,Correcta
+c,7,media,"¿Qué expresión DAX tiene la measure ""# Stores""?",COUNTROWS('Store'),"La medida `# Stores` en la tabla `Store` tiene la siguiente expresión DAX:
+
+```dax
+COUNTROWS('Store')
+```",2,880,30,910,Correcta
+c,8,media,"Listá todas las columnas ocultas (isHidden) de la tabla ""Sales"".","Quantity, CustomerKey, StoreKey, ProductKey, Net Price, Unit Cost (6 columnas)","Las columnas ocultas de la tabla ""Sales"" son:
+- Quantity
+- CustomerKey
+- StoreKey
+- ProductKey
+- Net Price
+- Unit Cost",1,3014,35,3049,Correcta
+c,9,media,"¿Qué categoría de negocio (revenue/cost/margin/...) le asigna pbi-docs a la measure ""Cost""?",cost,La measure **Cost** (en la tabla **Sales**) tiene asignada la categoría **cost**.,1,794,20,814,Correcta
+c,10,media,"¿Qué columna de la tabla ""Customer"" tiene tipo de dato dateTime?",Birthday,"La columna de la tabla ""Customer"" que tiene tipo de dato dateTime es **Birthday**.",1,1359,18,1377,Correcta
+c,11,dificil,"En la relación donde Sales.ProductKey es el lado ""muchos"", ¿qué tabla es el lado ""uno""?",Product,"La tabla del lado ""uno"" en esa relación es **Product** (columna `ProductKey`).",1,1036,21,1057,Correcta
+c,12,dificil,"¿Cómo se llama la measure que calcula la diferencia entre ""Sales Amount"" y ""Sales Amount (LY)""?",Sales Amount  (Δ LY) (nota: doble espacio en el nombre real),La measure se llama `Sales Amount  (Δ LY)` en la tabla `Sales`.,2,1358,18,1376,Correcta
+c,13,dificil,¿Qué measure usa USERELATIONSHIP para activar la relación inactiva de Delivery Date?,Sales Qty by Delivery Date,El measure **Sales Qty by Delivery Date** (de la tabla **Sales**) utiliza `USERELATIONSHIP` para activar la relación inactiva de `Delivery Date`.,3,961,36,997,Correcta
+c,14,dificil,"¿Cuántas measures de la tabla ""Sales"" están categorizadas como ""margin""?","4 (Margin, Margin (ly), Margin %, Margin % Overall)","En la tabla ""Sales"" hay 4 measures categorizadas como ""margin"":
+1. Margin
+2. Margin (ly)
+3. Margin %
+4. Margin % Overall",1,3008,38,3046,Correcta
+c,15,dificil,¿Qué dos tablas tienen partition_count: 0 (sin partición de datos)?,"Smart Calcs, Time Intelligence",NOT_FOUND,12,8751,3,8754,NOT_FOUND
+c,16,dificil,¿Qué measure usa SELECTEDVALUE para construir un selector dinámico de measures?,"Value (tabla ""Dynamic Measure"")",La measure `Value` en la tabla `Dynamic Measure`.,4,2373,12,2385,Correcta
+c,17,dificil,Buscá todas las measures cuyo nombre contenga 'YTD'. ¿Cuántas hay y cómo se llaman?,"2: ""Sales Amount (YTD)"", ""Sales Amount (YTD, LY)""","Hay 3 measures cuyo nombre contiene 'YTD':
+
+1. `Value (ytd)` (en la tabla `Dynamic Measure`)
+2. `Sales Amount (YTD, LY)` (en la tabla `Sales`)
+3. `Sales Amount (YTD)` (en la tabla `Sales`)",1,902,64,966,"Correcta, Revisar definicion de correcto"
+c,18,trampa,"¿Cuál es el format string de la measure ""Value"" (tabla ""Dynamic Measure"")?",""""" (vacío — no tiene format string definido)","El format string de la medida ""Value"" (tabla ""Dynamic Measure"") está vacío (cadena vacía `""""`).",1,909,25,934,Correcta
+c,19,trampa,"¿Cuál es la expresión DAX de la measure ""Total Revenue""?",NOT_FOUND — esa measure no existe en este modelo,NOT_FOUND,4,3684,3,3687,NOT_FOUND
+c,20,dificil,"¿Qué tabla de hechos se relaciona tanto con ""Customer"" como con ""Store""?",Sales,Sales,2,1631,1,1632,Correcta
