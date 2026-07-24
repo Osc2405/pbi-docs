@@ -363,14 +363,27 @@ Usage examples:
             a_path, b_path = args.diff
             logger.info(f"Comparing models: {a_path.name} vs {b_path.name}")
             try:
+                name_a = _get_model_name(a_path, detect_input_format(str(a_path)))
+                name_b = _get_model_name(b_path, detect_input_format(str(b_path)))
+                # Two different model paths commonly share the same basename —
+                # e.g. the same project compared at two commits/checkouts, the
+                # single most common real-world diff scenario. process_file()
+                # writes to output_base/model_name, so a naive second call
+                # would silently overwrite the first model's output *before*
+                # diff_impact() reads model_dir_a back from disk, making every
+                # "used_by" empty regardless of real dependencies (see
+                # CHANGELOG). Route b into a separate subdirectory whenever
+                # names collide; otherwise keep the existing flat layout.
+                output_base_b = args.output / "_diff_b" if name_a == name_b else args.output
+
                 meta_a = process_file(a_path, args.output, lang=args.lang,
                                       index_format=args.index_format, pretty=args.pretty)
-                meta_b = process_file(b_path, args.output, lang=args.lang,
+                meta_b = process_file(b_path, output_base_b, lang=args.lang,
                                       index_format=args.index_format, pretty=args.pretty)
                 diff = diff_models(meta_a, meta_b)
                 if args.diff_impact:
-                    model_dir_a = args.output / _get_model_name(a_path, detect_input_format(str(a_path)))
-                    model_dir_b = args.output / _get_model_name(b_path, detect_input_format(str(b_path)))
+                    model_dir_a = args.output / name_a
+                    model_dir_b = output_base_b / name_b
                     diff.update(diff_impact(diff, model_dir_a, model_dir_b, transitive=args.transitive))
                 diff_name = f"diff_{a_path.stem}_vs_{b_path.stem}.json"
                 diff_path = args.output / diff_name
