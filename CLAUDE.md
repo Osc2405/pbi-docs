@@ -153,6 +153,33 @@ Suite completa: 203 tests, todos en verde.
 
 ---
 
+### Actualización 2026-07-21 — Hallazgo #3 de escala (indent=2) implementado, cifra real medida
+
+Cierra el hallazgo #3 que las actualizaciones de 2026-07-18/2026-07-20 dejaban documentado pero
+sin implementar (`docs/scale_validation_report.md` sección 5.1: quitar `indent=2` de `json.dump()`
+reduciría el tamaño de la salida indexada pero afecta legibilidad humana). Decisión tomada esta
+sesión: la salida indexada (`index.json`, `tables/*.json`, `relationships.json`) pasa a ser
+**compacta por defecto** (`_write_json()` en `pbi_extractor/indexed_output.py`, sin `indent`),
+con un flag nuevo `--pretty` en `cli.py` que restaura `indent=2` para debug humano. Justificación:
+el consumidor primario de estos archivos es `resolver.py`/`mcp_server.py`/un LLM, no un humano
+leyendo JSON crudo — el artefacto legible para humanos (`model_documentation.md`) no se tocó.
+
+Re-corrida completa de la metodología de la sección 5.1 sobre el mismo modelo sintético de 60
+tablas/288 measures (`docs/scale_validation_report.md` sección 5.2, cifras reales, no proyectadas):
+"tabla específica" (`Fact01` vía `get_table()`) pasa de 2.00x a **1.13x** el tamaño de TMDL crudo
+(-43.5%); "deep-dive completo" pasa de 2.12x a **1.18x** (-44.3%, coincide casi exactamente con la
+proyección de la sección 5.1). Combinado con el fix de `resolver.get_table()` del 2026-07-20,
+"tabla específica" queda en paridad práctica con el TMDL crudo. "Deep-dive completo" mejora fuerte
+pero sigue sin ser una victoria neta en este modelo sintético en particular — el generador produce
+TMDL limpio, sin `lineageTag`/`annotations` que un export real de Power BI Desktop sí tiene y que
+`pbi-docs` descarta; no generalizar a "siempre gana" sin medir contra un modelo real grande, que
+sigue sin existir públicamente (ver sección 1 del mismo informe).
+
+El conteo real de tokens vía API de Anthropic sigue bloqueado por falta de `ANTHROPIC_API_KEY` —
+las cifras de esta sección son bytes medidos directamente, no tokens reales.
+
+---
+
 ### Actualización 2026-07-23 — Conteo real de tokens vía Gemini (segundo proveedor, no resuelve bloqueo Anthropic)
 
 `scripts/count_tokens.py` (dev-only, mismo tratamiento que Graphify — no es dependencia del
