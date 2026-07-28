@@ -32,8 +32,12 @@ from .formatters import categorize_dax_complexity
 _COLUMN_TOON_FIELDS = ["name", "data_type", "category", "is_hidden", "source_column", "format_string"]
 _REL_TOON_FIELDS = ["from_table", "from_column", "to_table", "to_column",
                     "cardinality", "cross_filtering", "is_active"]
-_MEASURE_FLAT_TOON_FIELDS = ["name", "category", "complexity", "is_hidden",
-                              "format_string", "display_folder"]
+# Canonical flat-measure shape, shared with resolver.py (which builds the
+# same 6 keys again when normalizing a JSON-format table's raw measures) --
+# a single source of truth to avoid the drift that already caused a real bug
+# once (partition_count silently missing from index.json, see CHANGELOG).
+MEASURE_FLAT_FIELDS = ["name", "category", "complexity", "is_hidden",
+                       "format_string", "display_folder"]
 
 # Empirical TOON/JSON crossover for --index-format auto, measured on
 # files_test/Supply Chain Sample.pbip (docs/token_optimization_report.md section 4):
@@ -50,7 +54,7 @@ def _should_use_toon(table: dict) -> bool:
     return rows >= _AUTO_TOON_MIN_ROWS
 
 
-def _safe_filename(name: str) -> str:
+def safe_filename(name: str) -> str:
     """Sanitize a table name for use as a filesystem filename."""
     return re.sub(r'[\\/:*?"<>|]', "_", name)
 
@@ -85,6 +89,7 @@ def _table_entry_json(t: dict) -> dict:
         "name": t["name"],
         "is_hidden": t.get("is_hidden", False),
         "is_technical": t.get("is_technical", False),
+        "partition_count": t.get("partition_count", 0),
         "columns": t.get("columns", []),
         "measures": t.get("measures", []),
     }
@@ -94,8 +99,10 @@ def _table_entry_json(t: dict) -> dict:
 # TOON table/relationship builders
 # ---------------------------------------------------------------------------
 
-def _flat_measure(m: dict) -> dict:
-    """Build a flat measure record suitable for TOON encoding."""
+def flatten_measure(m: dict) -> dict:
+    """Build the canonical flat measure record (MEASURE_FLAT_FIELDS) from a
+    raw measure dict (as found in cleaned_metadata, carrying `expression`).
+    Shared with resolver.get_table()'s JSON-source normalization path."""
     return {
         "name": m.get("name", ""),
         "category": m.get("category", "other"),
@@ -113,10 +120,11 @@ def _table_entry_toon(t: dict) -> dict:
         "name": t["name"],
         "is_hidden": t.get("is_hidden", False),
         "is_technical": t.get("is_technical", False),
+        "partition_count": t.get("partition_count", 0),
         "columns": encode_toon(t.get("columns", []), _COLUMN_TOON_FIELDS),
         "measures_flat": encode_toon(
-            [_flat_measure(m) for m in measures],
-            _MEASURE_FLAT_TOON_FIELDS,
+            [flatten_measure(m) for m in measures],
+            MEASURE_FLAT_FIELDS,
         ),
         "measures_dax": [
             {"name": m.get("name", ""), "formatted_expression": m.get("formatted_expression", "")}
@@ -153,11 +161,12 @@ def build_index(cleaned_metadata: dict, source_format: str,
             "name": name,
             "is_hidden": t.get("is_hidden", False),
             "is_technical": t.get("is_technical", False),
+            "partition_count": t.get("partition_count", 0),
             "column_count": len(t.get("columns", [])),
             "measure_count": len(t.get("measures", [])),
             "categories": _table_categories(t),
             "format": table_format,
-            "path": f"tables/{_safe_filename(name)}.json",
+            "path": f"tables/{safe_filename(name)}.json",
         })
 
     return {
@@ -221,7 +230,7 @@ def write_indexed_output(
         table_use_toon = _should_use_toon(t) if is_auto else use_toon
         table_entry = (_table_entry_toon(t) if table_use_toon
                        else _table_entry_json(t))
-        fname = _safe_filename(t["name"]) + ".json"
+        fname = safe_filename(t["name"]) + ".json"
         _write_json(table_entry, tables_dir / fname, pretty)
 
     # --- index.json --------------------------------------------------------

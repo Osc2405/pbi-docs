@@ -211,6 +211,111 @@ def test_parse_measure_backtick_fenced_dax(tmp_path):
     assert measures["Next"]["expression"] == "SUM(Calc[X])"
 
 
+def test_parse_column_with_tab_then_space_indent_does_not_poison_siblings(tmp_path):
+    """A single leading TAB followed by a space (`\\t column X`) still counts as
+    depth 1 (_count_tabs only looks at the leading run of pure tabs, and
+    strip() removes the rest), so this specific mix is not actually broken —
+    but the well-formed columns before/after it must survive regardless of
+    what happens to the odd one, which is the real property worth locking in
+    (P1 #6, Pruebas/auditoria_general_2026-07-24.md: no existing test isolates
+    one malformed block from its siblings in the same table file)."""
+    tbl = tmp_path / "Mixed.tmdl"
+    tbl.write_text(
+        "table Mixed\n"
+        "\tcolumn Before\n"
+        "\t\tdataType: string\n"
+        "\t column Odd\n"        # tab + space before "column"
+        "\t\tdataType: string\n"
+        "\tcolumn After\n"
+        "\t\tdataType: int64\n",
+        encoding="utf-8",
+    )
+    table = _parse_table_tmdl_file(tbl)
+    cols = {c["name"]: c for c in table["columns"]}
+    assert cols["Before"]["dataType"] == "string"
+    assert cols["After"]["dataType"] == "int64"
+
+
+def test_parse_column_pure_space_indent_does_not_poison_siblings(tmp_path):
+    """Same isolation property as above, but for the fully space-indented case
+    already covered at the parse_pbip_model level by
+    test_error_mixed_tabs_spaces — here at the _parse_table_tmdl_file level,
+    confirming siblings around the bad column are unaffected, not just that
+    parsing doesn't crash."""
+    tbl = tmp_path / "Mixed.tmdl"
+    tbl.write_text(
+        "table Mixed\n"
+        "\tcolumn Before\n"
+        "\t\tdataType: string\n"
+        "    column Odd\n"       # spaces instead of tabs: _count_tabs sees depth 0
+        "        dataType: string\n"
+        "\tcolumn After\n"
+        "\t\tdataType: int64\n",
+        encoding="utf-8",
+    )
+    table = _parse_table_tmdl_file(tbl)
+    cols = {c["name"]: c for c in table["columns"]}
+    assert cols["Before"]["dataType"] == "string"
+    assert cols["After"]["dataType"] == "int64"
+    assert "Odd" not in cols  # depth 0 -> swallowed as a (non-)"table " line, not a column
+
+
+def test_parse_measure_dax_body_at_arbitrary_deep_indent(tmp_path):
+    """DAX continuation lines are accumulated at depth==2 (elif in_dax) and at
+    any depth>=3 (the catch-all branch) identically — so a hand-formatted
+    body indented far deeper than the 2-3 tabs every existing fixture uses
+    (e.g. nested IF/CALCULATE indented for human readability) must still
+    round-trip whole, not just the shallow depths already exercised."""
+    tbl = tmp_path / "Deep.tmdl"
+    tbl.write_text(
+        "table Deep\n"
+        "\tmeasure 'Nested' =\n"
+        "\t\t\t\t\t\tIF(\n"
+        "\t\t\t\t\t\t\tHASONEVALUE('Deep'[Code]),\n"
+        "\t\t\t\t\t\t\tCALCULATE(\n"
+        "\t\t\t\t\t\t\t\tSUM('Deep'[Value])\n"
+        "\t\t\t\t\t\t\t)\n"
+        "\t\t\t\t\t\t)\n"
+        "\t\tformatString: 0\n",
+        encoding="utf-8",
+    )
+    table = _parse_table_tmdl_file(tbl)
+    measures = {m["name"]: m for m in table["measures"]}
+    expr = measures["Nested"]["expression"]
+    assert "HASONEVALUE" in expr
+    assert "CALCULATE" in expr
+    assert "SUM('Deep'[Value])" in expr
+    assert measures["Nested"]["formatString"] == "0"
+
+
+def test_parse_backtick_fenced_dax_at_deeper_indent_than_existing_fixture(tmp_path):
+    """The existing backtick-fence test (test_parse_measure_backtick_fenced_dax)
+    uses a 3-tab body/closing-fence depth. The closing-fence check exists in
+    both the depth==2 and depth>=3 branches (pbip_extractor.py depth-2 and
+    depth>=3 handling), so a much deeper fence (6 tabs) must close just as
+    reliably — this is the "anidamiento profundo" half of P1 #6 for the
+    backtick form specifically, not just the plain multi-line form above."""
+    tbl = tmp_path / "DeepFence.tmdl"
+    tbl.write_text(
+        "table DeepFence\n"
+        "\tmeasure Value = ```\n"
+        "\t\t\t\t\t\tSWITCH(\n"
+        "\t\t\t\t\t\t\tTRUE(),\n"
+        "\t\t\t\t\t\t\t[X] > 0, \"pos\",\n"
+        "\t\t\t\t\t\t\t\"other\"\n"
+        "\t\t\t\t\t\t)\n"
+        "\t\t\t\t\t\t```\n"
+        "\tmeasure 'Next' = SUM(DeepFence[Y])\n",
+        encoding="utf-8",
+    )
+    table = _parse_table_tmdl_file(tbl)
+    measures = {m["name"]: m for m in table["measures"]}
+    assert len(table["measures"]) == 2
+    assert "```" not in measures["Value"]["expression"]
+    assert "SWITCH" in measures["Value"]["expression"]
+    assert measures["Next"]["expression"] == "SUM(DeepFence[Y])"
+
+
 def test_parse_partitions_counted():
     table = _parse_table_tmdl_file(DEF_DIR / "tables" / "Sales.tmdl")
     assert len(table["partitions"]) == 1
@@ -410,3 +515,35 @@ def test_error_mixed_tabs_spaces(tmp_path):
     # With spaces, _count_tabs returns 0 so the column won't be parsed,
     # but the function must not raise an exception.
     assert isinstance(bad, dict)
+
+
+def test_error_corrupt_table_file_is_skipped_not_fatal(tmp_path, capsys):
+    """P1 #3 (Pruebas/auditoria_general_2026-07-24.md): before this fix, one
+    unparseable table .tmdl file raised TmdlParseError and aborted the whole
+    model — inconsistent with .pbit, where a bad row/table is skipped with a
+    warning and extraction continues. Now .pbip matches that: a genuinely
+    corrupt table file (undecodable in both UTF-8 and UTF-16) is skipped, the
+    rest of the model still extracts, and a warning is printed."""
+    sm = tmp_path / "corrupt.SemanticModel"
+    definition = sm / "definition"
+    tables = definition / "tables"
+    tables.mkdir(parents=True)
+    (definition / "model.tmdl").write_text("model Model\n", encoding="utf-8")
+
+    (tables / "Good1.tmdl").write_text(
+        "table Good1\n\tcolumn A\n\t\tdataType: string\n", encoding="utf-8")
+    # Odd-length, invalid-UTF-8 bytes: fails UTF-8 decode (invalid start byte)
+    # and fails the UTF-16 fallback too (truncated code unit) — a genuine
+    # decode failure, not just a formatting quirk the parser already tolerates.
+    (tables / "Corrupt.tmdl").write_bytes(b"\x80\x81\x82")
+    (tables / "Good2.tmdl").write_text(
+        "table Good2\n\tcolumn B\n\t\tdataType: int64\n", encoding="utf-8")
+
+    schema = parse_pbip_model(str(sm))
+
+    names = {t["name"] for t in schema["model"]["tables"]}
+    assert names == {"Good1", "Good2"}
+
+    captured = capsys.readouterr()
+    assert "Warning" in captured.out
+    assert "Corrupt.tmdl" in captured.out

@@ -254,6 +254,7 @@ pbi-docs/
 │   ├── test_categorizer.py
 │   ├── test_i18n.py
 │   └── test_processor_and_context.py
+├── githooks/                # Reference pre-commit hook (docs/pre_commit_hook.md)
 ├── data/                   # Input model files
 ├── output/                 # Generated results
 ├── pyproject.toml          # Package configuration
@@ -473,6 +474,11 @@ Removed measures are checked for usages in the *old* model (those references jus
 modified measures are checked in the *new* model (those callers may now behave differently). The
 same capability is exposed to AI agents as the `diff_impact` MCP tool (see
 [MCP server](docs/use-cases.md#7-mcp-server---mcp-serve) in docs/use-cases.md).
+
+**Want this enforced automatically before a commit lands?** See
+**[docs/pre_commit_hook.md](docs/pre_commit_hook.md)** — a reference `git` pre-commit hook
+(under [`githooks/`](githooks/)) for repos that version `.pbip`/`.pbit` models, built on exactly
+the command above.
 
 ---
 

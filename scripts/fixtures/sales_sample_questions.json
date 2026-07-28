@@ -1,0 +1,142 @@
+[
+  {
+    "id": 1,
+    "difficulty": "facil",
+    "question": "¿Cuántas tablas tiene el modelo?",
+    "reference_answer": "11",
+    "condition_favors": null
+  },
+  {
+    "id": 2,
+    "difficulty": "facil",
+    "question": "¿Cuántas measures tiene el modelo en total?",
+    "reference_answer": "29",
+    "condition_favors": null
+  },
+  {
+    "id": 3,
+    "difficulty": "facil",
+    "question": "¿Cuántas relaciones existen entre tablas?",
+    "reference_answer": "5",
+    "condition_favors": null
+  },
+  {
+    "id": 4,
+    "difficulty": "facil",
+    "question": "¿La relación entre Sales[Delivery Date] y Calendar[Date] está activa o inactiva?",
+    "reference_answer": "Inactiva",
+    "condition_favors": null
+  },
+  {
+    "id": 5,
+    "difficulty": "facil",
+    "question": "¿Cuál es el format string de la measure \"Sales Amount\"?",
+    "reference_answer": "$ #,##0",
+    "condition_favors": null
+  },
+  {
+    "id": 6,
+    "difficulty": "media",
+    "question": "¿A qué tabla pertenece la measure \"Margin %\"?",
+    "reference_answer": "Sales",
+    "condition_favors": null
+  },
+  {
+    "id": 7,
+    "difficulty": "media",
+    "question": "¿Qué expresión DAX tiene la measure \"# Stores\"?",
+    "reference_answer": "COUNTROWS('Store')",
+    "condition_favors": null
+  },
+  {
+    "id": 8,
+    "difficulty": "media",
+    "question": "Listá todas las columnas ocultas (isHidden) de la tabla \"Sales\".",
+    "reference_answer": "Quantity, CustomerKey, StoreKey, ProductKey, Net Price, Unit Cost (6 columnas)",
+    "condition_favors": null
+  },
+  {
+    "id": 9,
+    "difficulty": "media",
+    "question": "¿Qué categoría de negocio (revenue/cost/margin/...) le asigna pbi-docs a la measure \"Cost\"?",
+    "reference_answer": "cost",
+    "condition_favors": null
+  },
+  {
+    "id": 10,
+    "difficulty": "media",
+    "question": "¿Qué columna de la tabla \"Customer\" tiene tipo de dato dateTime?",
+    "reference_answer": "Birthday",
+    "condition_favors": null
+  },
+  {
+    "id": 11,
+    "difficulty": "dificil",
+    "question": "En la relación donde Sales.ProductKey es el lado \"muchos\", ¿qué tabla es el lado \"uno\"?",
+    "reference_answer": "Product",
+    "condition_favors": null
+  },
+  {
+    "id": 12,
+    "difficulty": "dificil",
+    "question": "¿Cómo se llama la measure que calcula la diferencia entre \"Sales Amount\" y \"Sales Amount (LY)\"?",
+    "reference_answer": "Sales Amount  (Δ LY) (nota: doble espacio en el nombre real)",
+    "condition_favors": null
+  },
+  {
+    "id": 13,
+    "difficulty": "dificil",
+    "question": "¿Qué measure usa USERELATIONSHIP para activar la relación inactiva de Delivery Date?",
+    "reference_answer": "Sales Qty by Delivery Date",
+    "condition_favors": null
+  },
+  {
+    "id": 14,
+    "difficulty": "dificil",
+    "question": "¿Cuántas measures de la tabla \"Sales\" están categorizadas como \"margin\"?",
+    "reference_answer": "4 (Margin, Margin (ly), Margin %, Margin % Overall)",
+    "condition_favors": null
+  },
+  {
+    "id": 15,
+    "difficulty": "dificil",
+    "question": "¿Qué dos tablas tienen partition_count: 0 (sin partición de datos)?",
+    "reference_answer": "Smart Calcs, Time Intelligence",
+    "condition_favors": null
+  },
+  {
+    "id": 16,
+    "difficulty": "dificil",
+    "question": "¿Qué measure usa SELECTEDVALUE para construir un selector dinámico de measures?",
+    "reference_answer": "Value (tabla \"Dynamic Measure\")",
+    "condition_favors": null
+  },
+  {
+    "id": 17,
+    "difficulty": "dificil",
+    "question": "Buscá todas las measures cuyo nombre contenga 'YTD'. ¿Cuántas hay y cómo se llaman?",
+    "reference_answer": "3: \"Sales Amount (YTD)\", \"Sales Amount (YTD, LY)\", \"Value (ytd)\" (tabla Dynamic Measure) - corregido 2026-07-23, la referencia original decía 2 y omitía \"Value (ytd)\"",
+    "condition_favors": "C"
+  },
+  {
+    "id": 18,
+    "difficulty": "trampa",
+    "question": "¿Cuál es el format string de la measure \"Value\" (tabla \"Dynamic Measure\")?",
+    "reference_answer": "\"\" (vacío — no tiene format string definido)",
+    "condition_favors": null
+  },
+  {
+    "id": 19,
+    "difficulty": "trampa",
+    "question": "¿Cuál es la expresión DAX de la measure \"Total Revenue\"?",
+    "reference_answer": "NOT_FOUND — esa measure no existe en este modelo",
+    "condition_favors": null
+  },
+  {
+    "id": 20,
+    "difficulty": "dificil",
+    "question": "¿Qué tabla de hechos se relaciona tanto con \"Customer\" como con \"Store\"?",
+    "reference_answer": "Sales",
+    "condition_favors": null
+  }
+]

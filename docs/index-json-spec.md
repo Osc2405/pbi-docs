@@ -38,6 +38,7 @@ for a human reading raw JSON (`model_documentation.md` is the human-readable art
   "name": "Calendar",
   "is_hidden": false,
   "is_technical": false,          // heuristic flag for date-template/helper tables
+  "partition_count": 1,           // number of physical partitions defined for this table
   "column_count": 29,
   "measure_count": 0,
   "categories": ["revenue", "cost"],   // distinct measure categories present in this table (empty if none)
@@ -67,6 +68,7 @@ Two possible shapes, selected by that table's `format`:
   "name": "About",
   "is_hidden": false,
   "is_technical": false,
+  "partition_count": 1,
   "columns": [
     {"name": "Key", "data_type": "string", "category": "identifier", "is_hidden": false,
      "source_column": "Key", "format_string": ""}
@@ -81,12 +83,15 @@ Two possible shapes, selected by that table's `format`:
 
 **`"format": "toon"`** — columns and a flat measure summary use TOON encoding
 (`{__toon, __fields, __rows}`, a header + row-array shape — see `pbi_extractor/toon_encoder.py`),
-DAX bodies stay in a separate plain-JSON list so free-text expressions are never TOON-encoded:
+DAX bodies stay in a separate plain-JSON list so free-text expressions are never TOON-encoded.
+`partition_count` is likewise never TOON-encoded — it's a per-table scalar, not a tabular array,
+so it stays a plain top-level key in both formats, same treatment as `is_hidden`/`is_technical`:
 ```json
 {
   "name": "Calendar",
   "is_hidden": false,
   "is_technical": false,
+  "partition_count": 1,
   "columns": {
     "__toon": true,
     "__fields": ["name", "data_type", "category", "is_hidden", "source_column", "format_string"],

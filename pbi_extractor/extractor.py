@@ -75,13 +75,13 @@ def clean_json_text(text: str) -> str:
     cleaned = text.lstrip("\ufeff").replace("\x00", "")
     
     # Remove // line comments
-    cleaned = re.sub(r"(^|[\s{,\[])[ \t]*//.*?$", r"\\1", cleaned, flags=re.MULTILINE)
-    
+    cleaned = re.sub(r"(^|[\s{,\[])[ \t]*//.*?$", r"\1", cleaned, flags=re.MULTILINE)
+
     # Remove /* */ block comments
     cleaned = re.sub(r"/\*.*?\*/", "", cleaned, flags=re.DOTALL)
-    
+
     # Remove trailing commas before } or ]
-    cleaned = re.sub(r",\s*([}\]])", r"\\1", cleaned)
+    cleaned = re.sub(r",\s*([}\]])", r"\1", cleaned)
     
     return cleaned
 

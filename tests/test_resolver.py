@@ -96,6 +96,12 @@ def test_get_table_json_toon_parity(json_dir, toon_dir):
     from_json = get_table(json_dir, "Sales")
     from_toon = get_table(toon_dir, "Sales")
     assert from_json == from_toon
+    assert from_json["partition_count"] == from_toon["partition_count"] == 1
+
+
+def test_get_table_partition_count(json_dir):
+    table = get_table(json_dir, "Sales")
+    assert table["partition_count"] == 1
 
 
 def test_get_table_measure_shape(json_dir):
@@ -391,6 +397,63 @@ def test_find_measure_usages_transitive_reads_model_once_not_per_hop(large_synth
     assert call_count["n"] == 1, (
         f"_all_measures() was called {call_count['n']} times during one transitive "
         "walk — expected exactly 1 (cached across all BFS hops), not re-read per hop"
+    )
+
+
+# ---------------------------------------------------------------------------
+# _load_json caching (P1 #5, Pruebas/auditoria_general_2026-07-24.md): a
+# long-lived mcp_server.py process calls resolver functions repeatedly for the
+# same model_dir — every call used to re-read+re-parse the same JSON files
+# from disk with no reuse *across* separate tool calls (the fix above only
+# reuses reads *within* one transitive call).
+# ---------------------------------------------------------------------------
+
+def test_load_json_is_cached_across_calls(tmp_path, monkeypatch):
+    """Uses its own throwaway file (not the shared json_dir/toon_dir fixtures,
+    which are module-scoped and reused by many other tests in this file) so
+    this test can't leak state into anything else."""
+    import pbi_extractor.resolver as resolver_module
+
+    p = tmp_path / "standalone.json"
+    p.write_text(json.dumps({"v": 1}), encoding="utf-8")
+
+    real_json_load = resolver_module.json.load
+    call_count = {"n": 0}
+
+    def _counting_load(f):
+        call_count["n"] += 1
+        return real_json_load(f)
+
+    monkeypatch.setattr(resolver_module.json, "load", _counting_load)
+
+    resolver_module._load_json(p)
+    resolver_module._load_json(p)
+    resolver_module._load_json(p)
+
+    assert call_count["n"] == 1, (
+        f"the same unchanged file was parsed {call_count['n']} times across 3 "
+        "_load_json() calls — expected exactly 1 (cached)"
+    )
+
+
+def test_load_json_cache_invalidates_on_mtime_change(tmp_path):
+    import os
+
+    import pbi_extractor.resolver as resolver_module
+
+    p = tmp_path / "standalone.json"
+    p.write_text(json.dumps({"v": 1}), encoding="utf-8")
+    assert resolver_module._load_json(p)["v"] == 1
+
+    p.write_text(json.dumps({"v": 2}), encoding="utf-8")
+    # Force a distinct mtime — some filesystems have coarse mtime resolution
+    # and a same-tick rewrite wouldn't be observable as "changed".
+    new_mtime = p.stat().st_mtime + 5
+    os.utime(p, (new_mtime, new_mtime))
+
+    assert resolver_module._load_json(p)["v"] == 2, (
+        "_load_json() returned stale cached data after the underlying file's "
+        "mtime changed — cache must invalidate, not persist forever"
     )
 
 

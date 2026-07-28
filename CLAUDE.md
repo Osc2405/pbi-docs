@@ -153,6 +153,186 @@ Suite completa: 203 tests, todos en verde.
 
 ---
 
+### Actualización 2026-07-21 — Hallazgo #3 de escala (indent=2) implementado, cifra real medida
+
+Cierra el hallazgo #3 que las actualizaciones de 2026-07-18/2026-07-20 dejaban documentado pero
+sin implementar (`docs/scale_validation_report.md` sección 5.1: quitar `indent=2` de `json.dump()`
+reduciría el tamaño de la salida indexada pero afecta legibilidad humana). Decisión tomada esta
+sesión: la salida indexada (`index.json`, `tables/*.json`, `relationships.json`) pasa a ser
+**compacta por defecto** (`_write_json()` en `pbi_extractor/indexed_output.py`, sin `indent`),
+con un flag nuevo `--pretty` en `cli.py` que restaura `indent=2` para debug humano. Justificación:
+el consumidor primario de estos archivos es `resolver.py`/`mcp_server.py`/un LLM, no un humano
+leyendo JSON crudo — el artefacto legible para humanos (`model_documentation.md`) no se tocó.
+
+Re-corrida completa de la metodología de la sección 5.1 sobre el mismo modelo sintético de 60
+tablas/288 measures (`docs/scale_validation_report.md` sección 5.2, cifras reales, no proyectadas):
+"tabla específica" (`Fact01` vía `get_table()`) pasa de 2.00x a **1.13x** el tamaño de TMDL crudo
+(-43.5%); "deep-dive completo" pasa de 2.12x a **1.18x** (-44.3%, coincide casi exactamente con la
+proyección de la sección 5.1). Combinado con el fix de `resolver.get_table()` del 2026-07-20,
+"tabla específica" queda en paridad práctica con el TMDL crudo. "Deep-dive completo" mejora fuerte
+pero sigue sin ser una victoria neta en este modelo sintético en particular — el generador produce
+TMDL limpio, sin `lineageTag`/`annotations` que un export real de Power BI Desktop sí tiene y que
+`pbi-docs` descarta; no generalizar a "siempre gana" sin medir contra un modelo real grande, que
+sigue sin existir públicamente (ver sección 1 del mismo informe).
+
+El conteo real de tokens vía API de Anthropic sigue bloqueado por falta de `ANTHROPIC_API_KEY` —
+las cifras de esta sección son bytes medidos directamente, no tokens reales.
+
+---
+
+### Actualización 2026-07-23 — Conteo real de tokens vía Gemini (segundo proveedor, no resuelve bloqueo Anthropic)
+
+`scripts/count_tokens.py` (dev-only, mismo tratamiento que Graphify — no es dependencia del
+paquete) ahora soporta `--provider anthropic|gemini` (antes solo Anthropic, sin flag). Se agregó
+porque el usuario consiguió una API key de Gemini (capa gratuita) pero sigue sin una de Anthropic.
+`_iter_files()` y la lógica de combinar archivos no cambiaron — solo se agregó despacho por
+proveedor (`PROVIDERS` dict, funciones `_count_anthropic`/`_count_gemini` con lazy import cada
+una). Requiere `pip install google-genai` y `GEMINI_API_KEY`; usa el SDK unificado `google-genai`
+(no el `google-generativeai` antiguo), método `client.models.count_tokens()` — mismo tipo de
+endpoint gratuito (sin costo de generación) que `count_tokens` de Anthropic.
+
+Se actualizó `docs/token_optimization_report.md` (modelo Supply Chain Sample, 7 tablas) con una
+columna nueva para tokens reales de Gemini en las 3 tablas de escenario — los 3 escenarios
+completos, con el usuario corriendo los comandos con su key:
+- **Escenario 1** (overview): 10,590 / 47,296 / 830 tokens — ahorro real 92.2% (vs 91.0% aprox.).
+- **Escenario 2** (tabla `Backorder Percentage`, la más grande): 2,310 raw / 797 JSON / 527 TOON —
+  ahorro real JSON 65.5%, TOON 77.2% (vs 35.4%/46.0% aprox.); **TOON vs JSON real: -33.9%** (vs
+  -16.5% aprox.) — con tokenizador real, TOON gana el doble de lo que sugería chars÷4 en esta tabla.
+- **Escenario 3** (deep-dive completo): 10,590 raw / 2,339 JSON / 1,815 TOON / 4,141
+  `metadata.json` — ahorro real JSON 77.9%, TOON 82.9% (vs 52.7%/54.3% aprox.). **Hallazgo
+  principal de la sesión: TOON vs JSON agregado real es -22.4% (vs -3.4% aprox.)** — la
+  aproximación caracteres÷4 hacía ver el ahorro agregado de TOON como marginal y concentrado solo
+  en la tabla grande; con tokenizador real, TOON gana de forma consistente también en agregado.
+  Sección 5 del informe actualizada con este matiz (no contradice la sección 4 — TOON tabla por
+  tabla en tablas chicas sigue midiéndose en aproximación, no se remidió).
+
+**Hallazgo de método, no solo tokenizador:** las columnas `Bytes`/`Tokens aprox.` de JSON/TOON en
+este informe se midieron el 2026-07-15, antes de que `_write_json()` pasara a compacto por
+defecto (hallazgo #3 de `docs/scale_validation_report.md`, resuelto 2026-07-20). El `output/`
+regenerado para esta corrida ya es compacto (`separators=(",",":")`, sin `indent=2`), así que
+parte de la caída real-vs-aproximación en las filas JSON/TOON es el cambio de formato, no solo
+diferencia de tokenizador — documentado explícitamente en el informe para no confundir ambos
+efectos. Aparte, el `Bytes` que imprime el script también normaliza CRLF→LF al leer en modo
+texto, por lo que tampoco coincide byte a byte con `os.path.getsize` del disco — otra diferencia
+de método, no un bug.
+
+**No se tocó** `docs/scale_validation_report.md` (modelo sintético de 60 tablas) — queda fuera de
+alcance de esta sesión.
+
+**Esto no resuelve el bloqueo de Anthropic** documentado desde 2026-07-16 — sigue bloqueado, sin
+`ANTHROPIC_API_KEY`. El tokenizador de Gemini no es el de Claude; esto es un segundo punto de dato
+real de un proveedor distinto, útil para verificar la heurística caracteres÷4 en general, y un
+paso parcial hacia cerrar la limitación de "un solo proveedor" de
+`docs/precision_validation_report.md` sección 6 (que es sobre calidad de respuesta, no sobre
+conteo de tokens — sigue sin validar ahí).
+
+---
+
+### Actualización 2026-07-23 — Calidad de respuesta con Gemini real (function calling, Sales Sample)
+
+Cierra la parte de "calidad de respuesta" de la limitación de "un solo proveedor" que dejaba
+abierta el bullet anterior. Nuevo experimento: `scripts/answer_quality_gemini.py` (dev-only,
+mismo tratamiento Graphify) corre 20 preguntas de negocio contra `Sales Sample.pbip` (11
+tablas/29 measures) bajo 3 condiciones — A: TMDL crudo, B: JSON de pbi-docs completo, C: Gemini
+elige por su cuenta qué funciones de `resolver.py` llamar (Automatic Function Calling del SDK
+`google-genai`, no un `--query` fijo preseleccionado). Preguntas reusadas de
+`docs/human_validation_protocol.md` sección 5, copia estructurada en
+`scripts/fixtures/sales_sample_questions.json`.
+
+**Resultado real, calificado a mano** (`scripts/fixtures/sales_sample_gemini_results_validados.csv`,
+detalle en `docs/answer_quality_gemini_report.md`): precisión A 70% / B 90% / C 95%; tokens
+totales A 376,159 / B 202,674 / C 37,993 (ahorro C vs A: 89.9%). **Condición C gana en precisión Y
+en costo a la vez** — no hay trade-off entre barato y correcto en este modelo, que es la respuesta
+directa a por qué vale la pena la capa de consulta dirigida (MCP/resolver) sobre un dump completo.
+
+Dos hallazgos de datos en el camino, ambos verificados contra el código/modelo real, no solo
+inferidos de las respuestas:
+- **Gap real de producto, documentado no arreglado por decisión explícita:** `partition_count` se
+  calcula en `processor.py:228` pero `indexed_output.py` nunca lo copia a
+  `index.json`/`tables/*.json` — invisible para `resolver.py` y cualquier tool MCP. Falló en las
+  3 condiciones (en C, Gemini hizo 12 tool calls sin éxito buscándolo). Fix queda para sesión
+  aparte — toca el formato de salida de todos los modelos.
+- **Corrección de referencia:** la pregunta 17 (`docs/human_validation_protocol.md` sección 5)
+  tenía como respuesta "2" measures con "YTD" en el nombre; las 3 condiciones encontraron
+  independientemente una tercera (`Value (ytd)`), confirmada en vivo con
+  `resolver.search_measures()`. Corregido a "3" en el fixture y en la tabla original — la
+  referencia estaba incompleta, no los agentes.
+
+**Notas de implementación** (por si se reusa el patrón en otro script con Gemini): el modelo por
+defecto tuvo que cambiar 3 veces durante la sesión por errores reales de la API —
+`gemini-2.5-flash` (404 para cuentas nuevas en `generateContent`, aunque sigue funcionando para
+`count_tokens`) → `gemini-flash-latest` (resuelve a `gemini-3.6-flash`, cuota gratis de solo 20
+req/día) → `gemini-2.5-flash-lite` (mismo 404) → `gemini-flash-lite-latest` (funcionó). El límite
+real de RPM en la capa gratuita resultó ser 5, no una suposición de diseño — pacing y backoff
+exponencial ajustados con ese dato real, parseando el `retryDelay` que la propia API devuelve en
+el 429 en vez de adivinar el tiempo de espera.
+
+---
+
+### Actualización 2026-07-23 — Fix: `partition_count` ahora expuesto en `index.json`/`tables/*.json`
+
+Cierra el gap documentado en la sección anterior (`docs/answer_quality_gemini_report.md` sección
+3.1, pregunta 15 fallida en las 3 condiciones). `pbi_extractor/indexed_output.py`
+(`_table_entry_json`, `_table_entry_toon`, `build_index`) y `pbi_extractor/resolver.py`
+(`get_table`) ahora propagan `partition_count` desde `cleaned_metadata` hasta
+`index.json`/`tables/*.json`, vía `.get("partition_count", 0)` para no romper fixtures/dicts
+construidos a mano sin el campo. `resolver.list_tables()` no necesitó cambios — no filtra campos,
+solo filas. Descripción del tool MCP `list_tables` actualizada para mencionarlo. Campo aditivo, no
+requiere bump de `index.json`'s `"version"` (`docs/index-json-spec.md`). 4 tests nuevos en
+`tests/test_indexed_output.py`/`tests/test_resolver.py`, incluida paridad JSON/TOON específica del
+campo — 226 tests, todos en verde.
+
+**Verificado end-to-end contra el modelo real del experimento**, no solo con tests unitarios:
+regenerando `output/Sales Sample/` y corriendo `pbi-docs --query ... --list-tables`, las tablas
+`Smart Calcs` y `Time Intelligence` aparecen con `partition_count: 0` — exactamente la respuesta
+de referencia de la pregunta 15 que fallaba antes del fix.
+
+---
+
+### Actualización 2026-07-24 — Hook de pre-commit (referencia) + 4 hallazgos P1 de auditoría general
+
+Sesión originada en una auditoría general de arquitectura/deuda técnica/cobertura de tests
+(`Pruebas/auditoria_general_2026-07-24.md`, nota local gitignoreada — no versionada, igual
+tratamiento que otras notas de auditoría previas). De ahí salieron una feature nueva y varios
+fixes, todos con 283 tests en verde al cierre:
+
+- **Hook de pre-commit de referencia** (`githooks/`, no es parte del paquete instalable — plantilla
+  para repos que versionan modelos `.pbip`/`.pbit`, ver `docs/pre_commit_hook.md`). Bloquea un
+  commit que borra o modifica una measure de la que otra measure todavía depende, usando
+  `pbi-docs --diff --diff-impact --transitive`. Compara el contenido *staged* contra `HEAD` (no el
+  working tree — respeta un `git add` parcial) materializando ambas versiones vía `git
+  archive`/`git write-tree` en directorios temporales, porque `--diff` toma paths de filesystem,
+  no refs de git. Falla abierto (advierte, deja pasar el commit) si `pbi-docs` no está instalado o
+  falla inesperadamente. Instalación: `git config core.hooksPath githooks`. 17 tests en
+  `tests/test_githooks_pbip_diff.py`, incluyendo casos end-to-end reales (repo git temporal,
+  subprocess real de `pbi-docs`).
+- **Bug real encontrado construyendo el hook**: `--diff --diff-impact` corrompía silenciosamente
+  su propio campo `used_by` cuando `a_path` y `b_path` compartían el mismo nombre de modelo —
+  exactamente el caso "mismo proyecto, dos checkouts" que el hook ejercita. La segunda llamada a
+  `process_file()` sobreescribía el output de la primera antes de que `diff_impact()` la leyera de
+  vuelta, dando `used_by` vacío sin importar dependencias reales — una respuesta silenciosamente
+  incorrecta, no un crash, así que la suite existente no lo detectaba. Corregido en `cli.py`:
+  el output de `b` va a un subdirectorio `_diff_b` cuando los nombres colisionan.
+- **4 hallazgos P1 de la misma auditoría**, todos corregidos: (1) un archivo de tabla `.tmdl`
+  corrupto en `.pbip` abortaba todo el modelo en vez de solo advertir y saltarlo, como ya hacía
+  `.pbit` — alineado; (2) la forma "flat" de una measure estaba duplicada en 3 lugares (mismo
+  patrón que causó el bug de `partition_count` de la sección anterior) — centralizada en
+  `flatten_measure()`, usada ahora también por `resolver.get_table()`; (3) `resolver._load_json()`
+  ahora cachea por (path resuelto, mtime), ya que `mcp_server.py` ata un proceso de larga vida a un
+  directorio de modelo y releía los mismos JSON en cada llamada a tool, sin reuso entre llamadas
+  (el fix de rendimiento del 2026-07-18 solo deduplicaba lecturas *dentro* de un mismo BFS); (4)
+  4 tests nuevos de hardening del parser TMDL (indentación mixta tabs/espacios, DAX anidado
+  profundo) — pasaron sin cambios de código, cerrando un gap de cobertura sin bug real detrás.
+- **Cobertura de tests que no existía**: `extractor.py` (ruta `.pbit`) tenía cero tests y
+  `cli.py --batch` no tenía ninguno — hallazgos P0 de la misma auditoría. Se agregaron
+  `tests/test_extractor.py` (29 tests, fixtures de zip en memoria) y `tests/test_cli_batch.py`
+  (3 tests). Escribir los tests de extractor expuso un bug real: `clean_json_text()` usaba
+  `r"\\1"` (backslash literal + "1") en vez de `r"\1"` (backreference) en sus regex de
+  comentarios/comas colgantes — corrompía en vez de limpiar el JSON cuando el `DataModelSchema`
+  traía comentarios o trailing commas. Corregido.
+
+---
+
 ## 0. Contexto del proyecto (no re-investigar, ya validado)
 
 `pbi-docs` es un extractor y documentador de modelos de Power BI, 100% Python, cero dependencias

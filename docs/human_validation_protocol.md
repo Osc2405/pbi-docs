@@ -115,6 +115,11 @@ Calculadas leyendo `output/Sales Sample/metadata.json` directamente — no vista
 participantes. Dificultad marcada para asegurar variedad (igual que pide la sección 6.1 del
 análisis: "desde qué medidas hay hasta cómo se calcula el margen bruto y qué tablas involucra").
 
+**Nota (2026-07-23):** estas mismas 20 preguntas/respuestas de referencia también existen en forma
+estructurada en `scripts/fixtures/sales_sample_questions.json`, fuente canónica para el
+experimento automatizado con Gemini (`docs/answer_quality_gemini_report.md`). La tabla de esta
+sección se mantiene como versión legible para correr sesiones humanas.
+
 | # | Dificultad | Pregunta | Respuesta de referencia |
 | :--- | :--- | :--- | :--- |
 | 1 | Fácil | ¿Cuántas tablas tiene el modelo? | 11 |
@@ -133,7 +138,7 @@ análisis: "desde qué medidas hay hasta cómo se calcula el margen bruto y qué
 | 14 | Difícil | ¿Cuántas measures de la tabla "Sales" están categorizadas como "margin"? | 4 (Margin, Margin (ly), Margin %, Margin % Overall) |
 | 15 | Difícil | ¿Qué dos tablas tienen `partition_count: 0` (sin partición de datos)? | Smart Calcs, Time Intelligence |
 | 16 | Difícil | ¿Qué measure usa `SELECTEDVALUE` para construir un selector dinámico de measures? | Value (tabla "Dynamic Measure") |
-| 17 | Difícil | Buscá todas las measures cuyo nombre contenga "YTD". ¿Cuántas hay y cómo se llaman? | 2: "Sales Amount (YTD)", "Sales Amount (YTD, LY)" |
+| 17 | Difícil | Buscá todas las measures cuyo nombre contenga "YTD". ¿Cuántas hay y cómo se llaman? | 3: "Sales Amount (YTD)", "Sales Amount (YTD, LY)", "Value (ytd)" (tabla Dynamic Measure) |
 | 18 | Trampa | ¿Cuál es el format string de la measure "Value" (tabla "Dynamic Measure")? | "" (vacío — no tiene format string definido) |
 | 19 | Trampa | ¿Cuál es la expresión DAX de la measure "Total Revenue"? | NOT_FOUND — esa measure no existe en este modelo |
 | 20 | Difícil | ¿Qué tabla de hechos se relaciona tanto con "Customer" como con "Store"? | Sales |
@@ -141,6 +146,12 @@ análisis: "desde qué medidas hay hasta cómo se calcula el margen bruto y qué
 **Nota sobre la pregunta 17:** está pensada para favorecer a la Condición C — un participante con
 acceso a `search_measures("YTD")` la responde en una consulta; en A/B implica escanear manualmente
 todas las measures. Es intencional: mide justamente la ventaja que el Resolver/MCP dice ofrecer.
+
+**Corrección (2026-07-23):** la respuesta de referencia original decía "2" y omitía
+`Value (ytd)` (tabla `Dynamic Measure`) — encontrada independientemente por las 3 condiciones en
+`docs/answer_quality_gemini_report.md` (experimento con Gemini real) y confirmada en vivo con
+`resolver.search_measures(Path("output/Sales Sample"), "YTD")`. La respuesta de referencia estaba
+incompleta, no las respuestas de los agentes.
 
 ---
 
@@ -180,3 +191,9 @@ solo citar la cifra más favorable).
   del análisis de posicionamiento).
 - Validación con LLMs de otros proveedores (GPT, Gemini) — este protocolo mide participantes
   humanos, no la generalización de pbi-docs a otros modelos de IA.
+
+**Actualización (2026-07-23):** `docs/answer_quality_gemini_report.md` corrió calidad de
+respuesta con Gemini real (function calling) sobre este mismo set de 20 preguntas — 70/90/95% de
+precisión en A/B/C. No reemplaza esta validación humana, que sigue bloqueada en reclutamiento sin
+relación con esto; sí cierra el hueco de "un solo proveedor" que el bullet de arriba señala, para
+el eje de calidad de respuesta (con Gemini, todavía no con GPT).
