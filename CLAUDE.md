@@ -333,6 +333,145 @@ fixes, todos con 283 tests en verde al cierre:
 
 ---
 
+### Actualización 2026-07-28 — Primer release publicado en PyPI (`v1.0.0`), validado en venv limpio
+
+Cierra el ciclo de publicación que quedaba a medias desde antes de la sesión 2026-07-16 (ver
+`Pruebas/PENDIENTES_PUBLICACION_SEGURA.md`, nota local gitignoreada, para el detalle completo del
+checklist previo — branch protection, trusted publisher OIDC en pypi.org/test.pypi.org y la
+validación en TestPyPI con `1.0.0rc1`/`rc2` ya se habían hecho en sesiones anteriores).
+
+- **`CHANGELOG.md`**: contenido de `[Unreleased]` (Gemini scripts, hook de pre-commit, 4 fixes
+  reales de la auditoría P1, `partition_count`) fusionado dentro de `[1.0.0]`, fecha del header
+  actualizada a 2026-07-28 (fecha real de publicación) — decisión explícita del usuario de no
+  bumpear versión, ya que a ojos de PyPI es la primera publicación de todos modos.
+- **`main` está protegida** (requiere PR + 6 checks) — descubierto al intentar `git push` directo.
+  Los 11 commits pendientes (incluida la fusión del CHANGELOG y esta misma entrada) se subieron
+  vía rama `release/v1.0.0-prep` + PR, no push directo. El PR también absorbió un commit que ya
+  estaba en `origin/main` y no en local (`fix: skip Sales Sample resolver tests when fixture
+  absent`, mergeado sin conflictos).
+- **`v1.0.0` publicado en PyPI real** (`https://pypi.org/project/pbi-docs/`) vía el GitHub Release
+  + `publish.yml` (trusted publisher OIDC, ya configurado por el usuario en sesiones previas).
+- **Validación funcional en venv limpio** (no solo `pip install`, sino uso real): `pip install
+  pbi-docs` sin arrastrar dependencias, entry point `pbi-docs --help` correcto, extracción sobre
+  `tests/fixtures/minimal_pbip` genera los 7 archivos esperados, `--query` (`--list-tables`,
+  `--table`, `--search-measures`) responde bien, `--mcp-serve` responde protocolo JSON-RPC 2.0
+  completo (`initialize` + `tools/call`) y cierra limpio en EOF. Único hallazgo, cosmético y no
+  bloqueante: `--search-measures ""` (string vacío) cae en el error de "requiere uno de..." por un
+  check truthy (`if args.search_measures:`) en vez de `is not None` — nadie busca con query vacío
+  en la práctica, no se corrigió.
+- **Documentación sincronizada al estado publicado**: `README.md` (badge de PyPI, `pip install
+  pbi-docs` como instalación primaria, `git clone`/`pip install -e .` relegado a desarrollo),
+  `docs/pre_commit_hook.md` y `githooks/check_pbip_diff_impact.py` (ya no dicen "no publicado
+  todavía"), `docs/Analisis_Posicionamiento_Comparativa_Plan_Futuro.md` (instalación actualizada).
+  Notas locales gitignoreadas (`Pruebas/PENDIENTES_PUBLICACION_SEGURA.md`,
+  `Pruebas/powerbi_devops_integracion_pbi-docs.md`) también actualizadas — tenían veredictos
+  desactualizados sobre PyPI y el hook de pre-commit que ya no aplicaban.
+
+Suite completa: 283 tests, todos en verde (sin cambios de código en esta sesión, solo
+documentación/release).
+
+---
+
+### Actualización 2026-07-31 — `--diff-impact` extendido a columnas (Fase 2 del roadmap)
+
+Cierra la Fase 2 que quedó documentada (no ejecutada) en la sesión de reconciliación
+brainstorm/`NEXT_STEPS.md` del 2026-07-30: `--diff-impact` cubría roturas measure→measure pero no
+detectaba que un commit borrara o modificara una **columna** que una measure sigue referenciando
+en su DAX — ni `diff_impact()` ni el pre-commit hook lo reportaban.
+
+- **`resolver.find_column_usages(model_dir, table_name, column_name, *, transitive=False)`**
+  nueva — mirror de `find_measure_usages()`, reusando `_extract_references()` (ya distinguía
+  columnas de measures) y `_all_measures()` (una sola lectura cacheada). El caso `transitive=True`
+  reusa `find_measure_usages(transitive=True)` sobre cada referenciador directo en vez de
+  reimplementar el BFS — un referenciador directo de la columna puede a su vez tener sus propios
+  callers measure→measure, y ese camino ya estaba resuelto. Sin `find_column_dependencies()`
+  simétrico: una columna no tiene expresión DAX propia en este modelo (calculated columns no se
+  capturan con `expression`), así que "de qué depende una columna" no aplica — decisión explícita,
+  no un gap olvidado.
+- **`diff.diff_impact()`** ahora también devuelve `columns_removed_impact`/
+  `columns_modified_impact`, mismo criterio old-model/new-model que measures (removed → modelo
+  viejo, modified → modelo nuevo). `cli.py` (`--diff --diff-impact`) y `diff.diff_with_impact()`
+  no necesitaron cambios — ambos ya eran genéricos sobre las claves que devuelve `diff_impact()`.
+- **Tool MCP nuevo `find_column_usages`** (wrapper delgado, mismo patrón que cada tool existente
+  sobre una función de `resolver.py`); descripción de `diff_impact` actualizada para mencionar
+  impacto de columnas.
+- **`githooks/check_pbip_diff_impact.py`** extendido: `_has_breaking_impact()`/
+  `_format_impact_report()` ahora también miran `columns_removed_impact`/
+  `columns_modified_impact` — antes de este fix, el hook dejaba pasar sin advertencia un commit
+  que borraba una columna todavía referenciada por una measure (bug de cobertura, no de lógica:
+  `diff_impact()` ya reportaba el impacto, el hook simplemente no lo miraba).
+- Documentación sincronizada: `README.md` (`--diff-impact`), `docs/use-cases.md` (10 tools MCP,
+  no 9), `docs/pre_commit_hook.md` (alcance del hook menciona columnas).
+- 16 tests nuevos (`tests/test_resolver.py`, `tests/test_diff.py`, `tests/test_mcp_server.py`,
+  `tests/test_githooks_pbip_diff.py`, incluido un caso end-to-end real: commit que borra
+  `Sales[SalesAmount]` sin tocar la measure `Total Sales` que la sigue referenciando, bloqueado).
+
+Suite completa: 299 tests, todos en verde.
+
+---
+
+### Actualización 2026-07-31 — Fabric (documentado) + diagrama Mermaid en `model_documentation.md`
+
+Cierra la Fase 3 del roadmap ("Fabric + Mermaid", `Pruebas/brainstorm_features_2026-07-29.md` §5
+punto 3). Dos fichas de naturaleza distinta, no confundir su estado:
+
+- **Fabric — documentación de compatibilidad esperada, NO validación empírica.** Se preguntó
+  explícitamente al usuario (AskUserQuestion) si había acceso a un export real de un modelo
+  semántico de Microsoft Fabric en este entorno — respuesta: no. La ficha del brainstorm ya la
+  describía como "validación, no código nuevo", así que sin export real el alcance se redujo a
+  `docs/fabric_compatibility.md`: documenta, citando fuentes públicas de Microsoft Learn
+  verificadas por WebSearch esta sesión (no de memoria), que TMDL es el formato compartido entre
+  PBIP y los semantic models de Fabric, y que `pbip_extractor.py` parsea la gramática TMDL general
+  sin depender de artefactos específicos de Power BI Desktop — pero el documento queda marcado
+  explícitamente en estado 🟡 ("compatibilidad esperada, no validada"), nunca ✅, mismo tratamiento
+  que ya reciben `docs/human_validation_protocol.md` y el conteo real de tokens vía Anthropic. Si
+  aparece un export real de Fabric en una sesión futura, re-correr esto empíricamente (mismo
+  formato que `docs/pbip_validation_report.md`) y recién ahí subir el estado.
+- **Diagrama Mermaid — código real, con tests.** `pbi_extractor/documentation.py`:
+  `generate_mermaid_er(cleaned_metadata)` (+ `_sanitize_mermaid_id()`) genera un bloque
+  ```` ```mermaid ```` `erDiagram` (tablas + relaciones + cardinalidad crow's-foot, línea sólida/
+  punteada para relación activa/inactiva) reusando `relationships.json`/`cleaned_metadata` sin
+  nueva extracción — tablas aisladas (sin relaciones) se omiten a propósito. Insertado en
+  `generate_markdown()` dentro de la sección `## Relationships`/`## Relaciones`, antes de la tabla
+  existente. Nueva clave i18n `diagram_isolated_note` (en/es). Verificado no solo con tests sino
+  generando `model_documentation.md` real sobre `tests/fixtures/minimal_pbip` y confirmando que el
+  bloque Mermaid resultante es sintácticamente válido (crow's-foot correcto, IDs saneados sin
+  espacios, línea punteada en la relación inactiva del fixture).
+- 9 tests nuevos en `tests/test_processor_and_context.py` (no existe `test_documentation.py` — los
+  tests de `generate_markdown()` ya vivían en ese archivo, se mantuvo el patrón).
+
+Suite completa: 308 tests, todos en verde.
+
+---
+
+### Actualización 2026-07-31 — Cerrado `.mcp.json` → `Sales Sample` (Fase 4), ledger de deuda técnica
+
+Cierra la Fase 4 del roadmap: `.mcp.json` (raíz del repo) apuntaba a `output/Supply Chain Sample`
+desde antes de decidir (sesión 2026-07-18) que debía apuntar a `Sales Sample` — pendiente de
+ejecución hasta ahora.
+
+- `output/Sales Sample` regenerado con el pipeline actual (antes era del 2026-07-23, previo a
+  `--diff-impact` a columnas y al diagrama Mermaid) — confirmado que `model_documentation.md`
+  incluye el bloque ` ```mermaid ` nuevo.
+- `.mcp.json` actualizado a `output/Sales Sample`.
+- **Smoke test real** (no solo el harness sintético de `tests/test_mcp_server.py`): handshake
+  JSON-RPC manual (`initialize` → `tools/list` → `tools/call list_tables`) contra el directorio
+  real que `.mcp.json` ahora usa — confirmó 10 tools (incluye `find_column_usages`) y las 11
+  tablas esperadas de `Sales Sample`.
+- **Hallazgo de la misma pasada, corregido**: `docs/use-cases.md` (sección MCP server) tenía dos
+  referencias desactualizadas — `Supply Chain Sample` como fixture de demo, y "9 tools" (quedó
+  desactualizado cuando se agregó `find_column_usages` en la Fase 2, un miss de esa sesión).
+  Ambas corregidas.
+- **Nuevo, a partir de esta sesión**: `Pruebas/deuda_tecnica_por_etapa.md` — ledger acumulativo
+  (gitignored) con la deuda técnica pendiente/diferida de cada etapa del roadmap, retroactivo a
+  las Fases 1-3 más esta. Instrucción explícita del usuario: cada etapa futura agrega su propia
+  sección ahí, sin reescribir las anteriores.
+
+Suite completa: 308 tests, todos en verde (sin cambios de código de producción en esta sesión —
+solo `.mcp.json`, documentación, y regeneración de `output/`).
+
+---
+
 ## 0. Contexto del proyecto (no re-investigar, ya validado)
 
 `pbi-docs` es un extractor y documentador de modelos de Power BI, 100% Python, cero dependencias

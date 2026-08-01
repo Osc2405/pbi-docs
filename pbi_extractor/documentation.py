@@ -3,11 +3,54 @@ Generation of Markdown documentation and agent_context.json from cleaned_metadat
 Includes advanced DAX formatting for better readability.
 """
 
+import re
 from datetime import datetime
 from typing import Dict, List
 
 from .formatters import format_dax_for_documentation, format_dax_for_json, categorize_dax_complexity
 from .i18n import get_translation, get_category_name, get_complexity_label
+
+
+def _sanitize_mermaid_id(name: str) -> str:
+    """Mermaid erDiagram entity identifiers can't contain spaces or most
+    punctuation. Same sanitization spirit as indexed_output.safe_filename(),
+    applied to table names instead of filenames."""
+    safe = re.sub(r"[^A-Za-z0-9_]", "_", name)
+    if not safe or not safe[0].isalpha():
+        safe = f"T_{safe}"
+    return safe
+
+
+def generate_mermaid_er(cleaned_metadata: dict) -> str:
+    """Simplified ER diagram (tables + relationships + cardinality), reusing
+    cleaned_metadata's relationships — no new extraction. Isolated tables (no
+    relationships) are omitted: this is a visual summary of *connections*,
+    not a full entity list (that's already the Columns/Measures section).
+
+    Crow's-foot convention: `}o`/`o{` = "many", `||` = "one" (Power BI only
+    reports cardinality, not optionality, so the `}|`/`|o` variants are never
+    used). Solid line `--` = active relationship, dotted `..` = inactive
+    (reusing Mermaid's identifying/non-identifying line styles as a visual
+    convention here, not their literal ER meaning).
+
+    Returns "" if there are no relationships.
+    """
+    relationships = cleaned_metadata.get("relationships", [])
+    if not relationships:
+        return ""
+
+    lines = ["erDiagram"]
+    for rel in relationships:
+        from_id = _sanitize_mermaid_id(rel["from_table"])
+        to_id = _sanitize_mermaid_id(rel["to_table"])
+        from_card, to_card = rel["cardinality"].split(":")
+        from_symbol = "}o" if from_card == "many" else "||"
+        to_symbol = "o{" if to_card == "many" else "||"
+        line_style = "--" if rel["is_active"] else ".."
+        label = f"{rel['from_column']} to {rel['to_column']}"
+        lines.append(f"    {from_id} {from_symbol}{line_style}{to_symbol} {to_id} : \"{label}\"")
+
+    return "\n".join(lines)
 
 
 def generate_markdown(cleaned_metadata: dict, lang: str = "en") -> str:
@@ -92,6 +135,10 @@ def generate_markdown(cleaned_metadata: dict, lang: str = "en") -> str:
 
     if cleaned_metadata["relationships"]:
         doc += f"## {get_translation(lang, 'relationships')}\n\n"
+        diagram = generate_mermaid_er(cleaned_metadata)
+        if diagram:
+            doc += f"{get_translation(lang, 'diagram_isolated_note')}\n\n"
+            doc += "```mermaid\n" + diagram + "\n```\n\n"
         doc += f"| {get_translation(lang, 'from')} | {get_translation(lang, 'to')} | {get_translation(lang, 'type')} | {get_translation(lang, 'direction')} |\n"
         doc += "|------|----|----- |-----------|\n"
         for rel in cleaned_metadata["relationships"]:

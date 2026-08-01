@@ -407,3 +407,45 @@ def find_measure_usages(model_dir: Path, table_name: str, measure_name: str,
                 queue.append(key)
 
     return list(all_usages.values())
+
+
+def find_column_usages(model_dir: Path, table_name: str, column_name: str,
+                        *, transitive: bool = False) -> List[dict]:
+    """
+    Impact analysis for a column: which measures reference it in their DAX
+    expression (directly). Pass transitive=True to also include every
+    measure that transitively depends on a direct referencer (i.e. removing
+    the column breaks the direct measure, which breaks its own callers too).
+
+    No find_column_dependencies() counterpart exists: a column has no DAX
+    expression of its own in this model (calculated columns aren't captured
+    with an `expression` field), so "what does a column depend on" doesn't
+    apply — only "what depends on it" does.
+
+    Raises ResolverError if table_name/column_name doesn't exist.
+    """
+    table = get_table(model_dir, table_name)
+    if not any(c["name"] == column_name for c in table["columns"]):
+        names = [c["name"] for c in table["columns"]]
+        raise ResolverError(f"Unknown column '{column_name}' in table '{table_name}'. "
+                             f"Available columns: {names}")
+
+    all_measures = _all_measures(model_dir)
+    direct = []
+    for entry in all_measures:
+        refs = _extract_references(entry["expression"], entry["table"], entry["own_columns"])
+        if any(c["table"] == table_name and c["column"] == column_name for c in refs["columns"]):
+            direct.append({"table": entry["table"], "name": entry["name"]})
+
+    if not transitive:
+        return direct
+
+    # Each direct referencer may itself have callers (measure->measure) —
+    # reuse find_measure_usages(transitive=True) rather than reimplementing
+    # the BFS. _load_json is cached by (path, mtime), so this doesn't re-read
+    # disk per direct referencer, only re-walks already-cached in-memory data.
+    all_usages = {(u["table"], u["name"]): u for u in direct}
+    for u in direct:
+        for further in find_measure_usages(model_dir, u["table"], u["name"], transitive=True):
+            all_usages.setdefault((further["table"], further["name"]), further)
+    return list(all_usages.values())

@@ -17,6 +17,7 @@ from pbi_extractor.resolver import (
     search_columns,
     get_measure_dependencies,
     find_measure_usages,
+    find_column_usages,
     load_metadata,
     ResolverError,
 )
@@ -398,6 +399,61 @@ def test_find_measure_usages_transitive_reads_model_once_not_per_hop(large_synth
         f"_all_measures() was called {call_count['n']} times during one transitive "
         "walk — expected exactly 1 (cached across all BFS hops), not re-read per hop"
     )
+
+
+# ---------------------------------------------------------------------------
+# find_column_usages — Sales[SalesAmount] is referenced by 'Total Sales'
+# (SUM(Sales[SalesAmount])). Date[Date] is referenced by 'YTD Sales'
+# (DATESYTD) and 'Complex KPI' (PREVIOUSYEAR). Sales[SalesID]/[DateKey] are
+# never referenced by any measure.
+# ---------------------------------------------------------------------------
+
+def test_find_column_usages_direct_reference(json_dir):
+    usages = find_column_usages(json_dir, "Sales", "SalesAmount")
+    assert usages == [{"table": "Sales", "name": "Total Sales"}]
+
+
+def test_find_column_usages_multiple_direct_referencers(json_dir):
+    usages = find_column_usages(json_dir, "Date", "Date")
+    assert {(u["table"], u["name"]) for u in usages} == {
+        ("Sales", "YTD Sales"),
+        ("_Measures", "Complex KPI"),
+    }
+
+
+def test_find_column_usages_no_usages(json_dir):
+    assert find_column_usages(json_dir, "Sales", "SalesID") == []
+
+
+def test_find_column_usages_transitive_includes_downstream_measures(json_dir):
+    """'Total Sales' is used directly by 'YTD Sales'/'Complex KPI' — those count
+    as transitive usages of the column that feeds 'Total Sales'."""
+    usages = find_column_usages(json_dir, "Sales", "SalesAmount", transitive=True)
+    assert {(u["table"], u["name"]) for u in usages} == {
+        ("Sales", "Total Sales"),
+        ("Sales", "YTD Sales"),
+        ("_Measures", "Complex KPI"),
+    }
+
+
+def test_find_column_usages_transitive_default_false_unchanged(json_dir):
+    assert (find_column_usages(json_dir, "Sales", "SalesAmount")
+            == find_column_usages(json_dir, "Sales", "SalesAmount", transitive=False))
+
+
+def test_find_column_usages_unknown_column_raises(json_dir):
+    with pytest.raises(ResolverError, match="Unknown column"):
+        find_column_usages(json_dir, "Sales", "Nope")
+
+
+def test_find_column_usages_unknown_table_raises(json_dir):
+    with pytest.raises(ResolverError, match="Unknown table"):
+        find_column_usages(json_dir, "NoSuchTable", "Nope")
+
+
+def test_find_column_usages_json_toon_parity(json_dir, toon_dir):
+    assert (find_column_usages(json_dir, "Sales", "SalesAmount")
+            == find_column_usages(toon_dir, "Sales", "SalesAmount"))
 
 
 # ---------------------------------------------------------------------------

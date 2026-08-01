@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`--diff-impact` extended to columns**: `resolver.find_column_usages(model_dir, table_name, column_name, *, transitive=False)` — impact analysis for a column (which measures reference it in their DAX, directly or transitively), mirroring `find_measure_usages()`. No `find_column_dependencies()` counterpart: a column has no DAX expression of its own in this model, so "what does a column depend on" doesn't apply.
+- `diff.diff_impact()` now also returns `columns_removed_impact`/`columns_modified_impact` alongside the existing `measures_removed_impact`/`measures_modified_impact` — same old-model/new-model lookup rule (removed → old model, modified → new model). `cli.py`'s `--diff --diff-impact` and `diff.diff_with_impact()` needed no changes, both already generic over whatever keys `diff_impact()` returns.
+- New MCP tool `find_column_usages` (thin wrapper over the resolver function, same shape as `find_measure_usages`); `diff_impact` tool description updated to mention column impact.
+- `githooks/check_pbip_diff_impact.py`: `_has_breaking_impact()`/`_format_impact_report()` now also check `columns_removed_impact`/`columns_modified_impact` — the hook previously only blocked measure-breaking commits, letting a removed/modified column that a measure's DAX still references through silently.
+- **Mermaid ER diagram embedded in `model_documentation.md`**: `documentation.generate_mermaid_er(cleaned_metadata)` renders a simplified entity-relationship diagram (crow's-foot cardinality, solid/dotted line for active/inactive) directly from the relationships already in `cleaned_metadata` — no new extraction. Isolated tables (no relationships) are omitted. New i18n key `diagram_isolated_note` (en/es).
+
+### Documentation
+
+- `docs/fabric_compatibility.md`: documents *expected* TMDL compatibility with Microsoft Fabric semantic models, based on the shared public TMDL spec — explicitly marked as not empirically validated (no real Fabric export available in this environment), same treatment as other external blockers (`docs/human_validation_protocol.md`, Anthropic token counting).
+- `.mcp.json` now points at `output/Sales Sample` instead of `output/Supply Chain Sample` (decided in an earlier session, executed now); `docs/use-cases.md` MCP server section updated to match (also fixed a stale "9 tools" count left over from the `find_column_usages` addition — should have been 10).
+
 ## [1.0.0] - 2026-07-28
 
 ### Added

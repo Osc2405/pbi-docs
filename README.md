@@ -1,5 +1,6 @@
 ## pbi-docs — AI Context Engine for Power BI Models
 
+[![PyPI](https://img.shields.io/pypi/v/pbi-docs)](https://pypi.org/project/pbi-docs/)
 [![Tests](https://github.com/Osc2405/pbi-docs/actions/workflows/tests.yml/badge.svg)](https://github.com/Osc2405/pbi-docs/actions/workflows/tests.yml)
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -21,9 +22,7 @@ build, and anyone connecting an AI agent (Claude, GPT, Copilot) to a Power BI mo
 ## Quick Start
 
 ```powershell
-git clone https://github.com/Osc2405/pbi-docs.git
-cd pbi-docs
-pip install -e .
+pip install pbi-docs
 
 # From a .pbit file...
 pbi-docs --input "data/pbit/my-model.pbit"
@@ -102,6 +101,7 @@ First measure: Revenue Budget
 | **Use it from your AI coding assistant** | Chat-invocable Skill for Claude Code + prompt file for GitHub Copilot |
 | **Actually readable DAX** | Hierarchical indentation (4x better than raw) |
 | **Compare model versions** | Content-aware `--diff`, with impact analysis (`--diff-impact`) |
+| **See the model at a glance** | Embedded Mermaid ER diagram in `model_documentation.md` — renders natively on GitHub/VS Code |
 | **Zero-cost, zero-install** | Python-only, no .NET dependencies |
 
 **Perfect for:** Data engineers onboarding teams, consultants auditing models, organizations building AI copilots for BI.
@@ -121,6 +121,9 @@ layer parsing are deliberately out of scope for now (see `CHANGELOG.md` and the
 Optional: virtual environment (`venv`). No external libraries required.
 
 ## Installation (Windows/PowerShell)
+
+Just want to run `pbi-docs`? `pip install pbi-docs` (see Quick Start above) is all you need. The
+steps below are for working on `pbi-docs` itself (editable install from a local clone).
 
 ```powershell
 # 1) Clone or download the repository
@@ -222,6 +225,7 @@ Processing completed successfully for: my-model.pbit
 
 - **Supported formats:** `.pbit` files (ZIP + JSON TMSL) and `.pbip` projects (TMDL folder structure). `.pbix` files must be exported to `.pbit` from Power BI Desktop (File > Export > Power BI Template).
 - **PBIP entry points:** The `--input` flag accepts a `.pbip` marker file, a `.SemanticModel/` folder, or a project root folder. Format is auto-detected.
+- **Microsoft Fabric semantic models:** Fabric uses the same TMDL format as PBIP, so compatibility is *expected* but **not empirically validated** (no real Fabric export has been tested against this parser yet) — see [docs/fabric_compatibility.md](docs/fabric_compatibility.md).
 - **Language selection:** Use `--lang en` for English (default) or `--lang es` for Spanish. The language affects the generated `model_documentation.md` and `agent_context.json` files.
 - **Paths with spaces:** Use quotes around paths that contain spaces.
 - **Recommended paths:** Place your files in `data/` or `data/pbit/` to keep the project organized.
@@ -453,8 +457,9 @@ casing would still register as semantic.
 ```
 
 **Impact analysis (`--diff-impact`):** add `--diff-impact` (optionally with `--transitive`) to
-also report which measures reference each removed/modified measure — "what changed, and what
-might break" in one call, connecting this diff to the resolver's `find_measure_usages()`:
+also report which measures reference each removed/modified measure **or column** — "what changed,
+and what might break" in one call, connecting this diff to the resolver's `find_measure_usages()`
+and `find_column_usages()`:
 
 ```powershell
 pbi-docs --diff "data/pbit/dashboard_v1.pbit" "data/pbit/dashboard_v2.pbit" --diff-impact --transitive
@@ -467,13 +472,20 @@ pbi-docs --diff "data/pbit/dashboard_v1.pbit" "data/pbit/dashboard_v2.pbit" --di
   ],
   "measures_modified_impact": [
     {"table": "Fact", "name": "Total Sales", "used_by": [{"table": "Fact", "name": "YTD Sales"}]}
+  ],
+  "columns_removed_impact": [
+    {"table": "Fact", "name": "Discontinued Flag", "used_by": [{"table": "Fact", "name": "Active Sales"}]}
+  ],
+  "columns_modified_impact": [
+    {"table": "Fact", "name": "Amount", "used_by": [{"table": "Fact", "name": "Total Sales"}]}
   ]
 }
 ```
-Removed measures are checked for usages in the *old* model (those references just broke);
-modified measures are checked in the *new* model (those callers may now behave differently). The
-same capability is exposed to AI agents as the `diff_impact` MCP tool (see
-[MCP server](docs/use-cases.md#7-mcp-server---mcp-serve) in docs/use-cases.md).
+Removed measures/columns are checked for usages in the *old* model (those references just broke);
+modified measures/columns are checked in the *new* model (those callers may now behave
+differently). The same capability is exposed to AI agents as the `diff_impact` MCP tool (plus a
+standalone `find_column_usages` tool) — see
+[MCP server](docs/use-cases.md#7-mcp-server---mcp-serve) in docs/use-cases.md.
 
 **Want this enforced automatically before a commit lands?** See
 **[docs/pre_commit_hook.md](docs/pre_commit_hook.md)** — a reference `git` pre-commit hook
@@ -614,6 +626,8 @@ python --version  # Must be 3.10+
 **Error: "pbi-docs not recognized"**
 ```powershell
 # Reinstall the package
+pip install pbi-docs
+# Editable/dev install instead
 pip install -e .
 # Or use python -m
 python -m pbi_extractor.cli --input file.pbit

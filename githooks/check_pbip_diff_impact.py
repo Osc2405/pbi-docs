@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 Pre-commit guard for repos that version Power BI models (.pbip/.pbit):
-blocks a commit that removes or modifies a measure other measures still
-depend on (a broken DAX reference), using pbi-docs's own
+blocks a commit that removes or modifies a measure or column other measures
+still depend on (a broken DAX reference), using pbi-docs's own
 `--diff --diff-impact --transitive`.
 
 Reference implementation — see docs/pre_commit_hook.md for how to adopt this
@@ -16,11 +16,10 @@ just the working tree) against HEAD, for every distinct .pbip/.pbit/
 paths, not git refs, so both versions are materialized into temp directories
 via `git archive` (HEAD) / `git write-tree` + `git archive` (staged).
 
-Fail-open if pbi-docs isn't installed or crashes unexpectedly (it isn't
-published to PyPI yet — see docs/pre_commit_hook.md) so a broken local
-environment doesn't block everyone's commits. Fail-closed only on an actual
-detected breaking impact. Skip this check entirely with `git commit
---no-verify`.
+Fail-open if pbi-docs isn't installed or crashes unexpectedly (see
+docs/pre_commit_hook.md) so a broken local environment doesn't block
+everyone's commits. Fail-closed only on an actual detected breaking impact.
+Skip this check entirely with `git commit --no-verify`.
 """
 
 import importlib.util
@@ -34,9 +33,8 @@ from pathlib import Path
 from typing import List, Optional, Set
 
 INSTALL_HINT = (
-    "pbi-docs is not runnable - install it with `pip install -e .` (local dev) "
-    "or `pip install git+https://github.com/Osc2405/pbi-docs.git@<tag>` "
-    "(not yet published to PyPI). See docs/pre_commit_hook.md. "
+    "pbi-docs is not runnable - install it with `pip install pbi-docs` "
+    "or `pip install -e .` (local dev). See docs/pre_commit_hook.md. "
     "Skipping this check for now (fail-open)."
 )
 
@@ -65,17 +63,18 @@ def _detect_project_roots(staged_paths: List[str]) -> Set[str]:
 
 
 def _has_breaking_impact(diff: dict) -> bool:
-    """`measures_removed_impact`/`measures_modified_impact` carry one entry
-    per removed/modified measure regardless of whether anything still
-    references it — `used_by` is what tells you the removal/change actually
-    breaks something (diff.py:164-184). A non-empty list alone is not
-    sufficient; an entry with an empty `used_by` is a safe removal."""
-    for entry in diff.get("measures_removed_impact", []):
-        if entry.get("used_by"):
-            return True
-    for entry in diff.get("measures_modified_impact", []):
-        if entry.get("used_by"):
-            return True
+    """`measures_removed_impact`/`measures_modified_impact` (and their column
+    counterparts `columns_removed_impact`/`columns_modified_impact`) carry one
+    entry per removed/modified measure or column regardless of whether
+    anything still references it — `used_by` is what tells you the
+    removal/change actually breaks something (diff.py). A non-empty list
+    alone is not sufficient; an entry with an empty `used_by` is a safe
+    removal."""
+    for key in ("measures_removed_impact", "measures_modified_impact",
+                "columns_removed_impact", "columns_modified_impact"):
+        for entry in diff.get(key, []):
+            if entry.get("used_by"):
+                return True
     return False
 
 
@@ -93,6 +92,18 @@ def _format_impact_report(unit: str, diff: dict) -> str:
             continue
         callers = ", ".join(f"{u['table']}[{u['name']}]" for u in used_by)
         lines.append(f"    MODIFIED {entry['table']}[{entry['name']}] - used by: {callers}")
+    for entry in diff.get("columns_removed_impact", []):
+        used_by = entry.get("used_by") or []
+        if not used_by:
+            continue
+        callers = ", ".join(f"{u['table']}[{u['name']}]" for u in used_by)
+        lines.append(f"    REMOVED COLUMN {entry['table']}[{entry['name']}] - still used by: {callers}")
+    for entry in diff.get("columns_modified_impact", []):
+        used_by = entry.get("used_by") or []
+        if not used_by:
+            continue
+        callers = ", ".join(f"{u['table']}[{u['name']}]" for u in used_by)
+        lines.append(f"    MODIFIED COLUMN {entry['table']}[{entry['name']}] - used by: {callers}")
     return "\n".join(lines)
 
 
@@ -213,7 +224,7 @@ def main() -> int:
     if not reports:
         return 0
 
-    print("pbip diff-impact check: this commit breaks measures other measures depend on.\n")
+    print("pbip diff-impact check: this commit breaks measures/columns other measures depend on.\n")
     print("\n\n".join(reports))
     print(
         "\nFix the broken references, or update the dependents, before committing. "

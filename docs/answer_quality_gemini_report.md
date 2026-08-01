@@ -103,6 +103,11 @@ arreglar** — el fix toca `indexed_output.py`, que afecta el formato de salida 
 modelos, y queda fuera del alcance de esta sesión (evaluado explícitamente, ver plan de esta
 sesión).
 
+**Corrección (2026-07-23, misma semana):** este gap se cerró — `indexed_output.py` y
+`resolver.py` ahora propagan `partition_count` a `index.json`/`tables/*.json` (ver `CHANGELOG.md`
+bajo `[1.0.0]`). Verificado en vivo: `output/Sales Sample/tables/*.json` trae el campo en cada
+tabla; la pregunta 15 ya resolvería correctamente en las condiciones B y C.
+
 ### 3.2 Corrección: la respuesta de referencia de la pregunta 17 estaba incompleta
 
 Las 3 condiciones encontraron independientemente una tercera measure con "YTD" en el nombre
@@ -171,6 +176,10 @@ ese outlier, el promedio del resto de las preguntas ronda 1.6 llamadas — la fr
 Condición C en la práctica es baja, salvo cuando el dato que se pide genuinamente no está en la
 superficie de consulta.
 
+**Corrección (2026-07-23):** ese outlier ya no se repetiría — el fix de `partition_count` (sección
+3.1) expuso el dato en la superficie de consulta, así que una repetición de este experimento no
+debería ver las 12 llamadas de la pregunta 15.
+
 ---
 
 ## 6. Limitaciones
@@ -188,9 +197,8 @@ superficie de consulta.
 - **No comparable 1:1 con `docs/precision_validation_report.md`** — otro modelo (11 tablas vs 7),
   otro proveedor (Gemini real vs subagentes de Claude), preguntas distintas. Ambos informes son
   medidas independientes que apuntan en la misma dirección, no una réplica exacta.
-- **El gap de `partition_count` (sección 3.1) queda documentado, no arreglado** — decisión
-  explícita de esta sesión, para no expandir el alcance a un cambio en `indexed_output.py` que
-  afecta el formato de salida de todos los modelos.
+- ~~**El gap de `partition_count` (sección 3.1) queda documentado, no arreglado**~~ — **cerrado
+  2026-07-23** (ver corrección en sección 3.1).
 - **Un solo modelo mediano** — 11 tablas es un paso adelante respecto a las 7 del informe
   original, pero sigue siendo chico comparado con un modelo enterprise real (decenas de tablas) —
   ver `docs/scale_validation_report.md` para las regresiones de ahorro de tokens ya documentadas a

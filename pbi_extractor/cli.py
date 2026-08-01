@@ -198,7 +198,7 @@ def _run_query(args) -> int:
             result = resolver.get_measure(args.query, args.table, args.measure)
         elif args.table:
             result = resolver.get_table(args.query, args.table)
-        elif args.search_measures:
+        elif args.search_measures is not None:
             result = resolver.search_measures(args.query, args.search_measures, category=args.category)
         elif args.search_columns:
             result = resolver.search_columns(args.query, args.search_columns, category=args.category)

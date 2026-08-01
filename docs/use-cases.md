@@ -97,11 +97,12 @@ query a Power BI model directly as tools, not through a Skill's file-reading ins
 stable spec (`2025-06-18`, newline-delimited JSON-RPC 2.0 over stdio). No `mcp` SDK dependency:
 that package pulls in pydantic/anyio/httpx/starlette/uvicorn, which would break this project's
 zero-dependency stance. One server instance is bound to one already-processed model directory,
-exposing 9 tools — thin wrappers around `resolver.py`/`diff.py`: `list_tables`, `get_table`,
+exposing 10 tools — thin wrappers around `resolver.py`/`diff.py`: `list_tables`, `get_table`,
 `get_measure`, `search_measures`, `search_columns`, `get_relationships`,
-`get_measure_dependencies`, `find_measure_usages`, and `diff_impact` (compare against another
-already-processed model directory and report which measures depend on each removed/modified
-measure — "what changed and what might break" for an agent auditing an edit).
+`get_measure_dependencies`, `find_measure_usages`, `find_column_usages`, and `diff_impact`
+(compare against another already-processed model directory and report which measures depend on
+each removed/modified measure or column — "what changed and what might break" for an agent
+auditing an edit).
 
 ```bash
 pbi-docs --mcp-serve output/my-model
@@ -129,16 +130,16 @@ This is deliberately read-only (no DAX execution, no model editing) — it's a c
 complementary to Microsoft's Modeling MCP (writes) and Remote MCP (executes DAX), not a
 replacement for either.
 
-**This repo ships its own `.mcp.json`** (project root) pointing at the `Supply Chain Sample`
+**This repo ships its own `.mcp.json`** (project root) pointing at the `Sales Sample`
 validation fixture — a dev/demo convenience for testing `mcp_server.py` itself against a real
 MCP client, not a template end users need (real usage is the config above, pointed at your own
 processed model). To verify it against Claude Code:
 
-1. Process the fixture first: `pbi-docs -i "files_test/Supply Chain Sample.pbip" -o output`.
+1. Process the fixture first: `pbi-docs -i "files_test/Sales Sample.pbip" -o output`.
 2. Restart/reload Claude Code in this project (or open a fresh session here) — project-scoped
    `.mcp.json` servers require a session (re)start to be picked up.
 3. Run `/mcp` — `pbi-docs` shows as `⏸ Pending approval` the first time; approve it.
-4. Run `/mcp` again — should show connected, 9 tools.
+4. Run `/mcp` again — should show connected, 10 tools.
 5. Ask something like *"what tables does this Power BI model have"* — Claude should call
    `mcp__pbi-docs__list_tables` directly (visible in the transcript), not read any file.
 
