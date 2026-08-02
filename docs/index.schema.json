@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Osc2405/pbi-docs/blob/main/docs/index.schema.json",
+  "title": "pbi-docs index.json",
+  "description": "Formal schema for index.json, the lightweight per-model summary + file-pointer contract documented in prose in docs/index-json-spec.md. Does NOT cover tables/<Name>.json or relationships.json, which can contain TOON-encoded blocks depending on --index-format; index.json itself never does.",
+  "type": "object",
+  "required": [
+    "version",
+    "model_name",
+    "extraction_date",
+    "compatibility_level",
+    "source_format",
+    "index_format",
+    "summary",
+    "tables",
+    "files"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Bumped on any incompatible shape change to this file. Additive changes (a new optional field) don't require a bump."
+    },
+    "model_name": { "type": "string" },
+    "extraction_date": { "type": "string" },
+    "compatibility_level": {
+      "type": "string",
+      "description": "Analysis Services compatibility level, as a string (not an integer)."
+    },
+    "source_format": { "type": "string", "enum": ["pbit", "pbip"] },
+    "index_format": {
+      "type": "string",
+      "enum": ["json", "toon", "auto"],
+      "description": "The --index-format the model was processed with. Under 'auto', each table's actual format is decided independently — see tables[].format, never assume this top-level value applies uniformly."
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "total_tables",
+        "business_tables",
+        "technical_tables",
+        "total_columns",
+        "total_measures",
+        "total_relationships"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "total_tables": { "type": "integer", "minimum": 0 },
+        "business_tables": { "type": "integer", "minimum": 0 },
+        "technical_tables": { "type": "integer", "minimum": 0 },
+        "total_columns": { "type": "integer", "minimum": 0 },
+        "total_measures": { "type": "integer", "minimum": 0 },
+        "total_relationships": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "tables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "is_hidden",
+          "is_technical",
+          "partition_count",
+          "column_count",
+          "measure_count",
+          "categories",
+          "format",
+          "path"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "is_hidden": { "type": "boolean" },
+          "is_technical": {
+            "type": "boolean",
+            "description": "Heuristic flag for date-template/helper tables (categorizer.is_technical_table)."
+          },
+          "partition_count": { "type": "integer", "minimum": 0 },
+          "column_count": { "type": "integer", "minimum": 0 },
+          "measure_count": { "type": "integer", "minimum": 0 },
+          "categories": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Distinct measure categories present in this table. Empty if none."
+          },
+          "format": {
+            "type": "string",
+            "enum": ["json", "toon"],
+            "description": "The ACTUAL format of this table's tables/<Name>.json file. Always trust this over the top-level index_format — see its description."
+          },
+          "path": {
+            "type": "string",
+            "description": "Relative to index.json's own directory, e.g. 'tables/Calendar.json'."
+          }
+        }
+      }
+    },
+    "files": {
+      "type": "object",
+      "required": ["metadata", "documentation", "agent_context", "model_context", "relationships"],
+      "additionalProperties": false,
+      "properties": {
+        "metadata": { "type": "string" },
+        "documentation": { "type": "string" },
+        "agent_context": { "type": "string" },
+        "model_context": { "type": "string" },
+        "relationships": { "type": "string" }
+      }
+    }
+  }
+}

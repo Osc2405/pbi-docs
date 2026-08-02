@@ -102,6 +102,7 @@ First measure: Revenue Budget
 | **Actually readable DAX** | Hierarchical indentation (4x better than raw) |
 | **Compare model versions** | Content-aware `--diff`, with impact analysis (`--diff-impact`) |
 | **See the model at a glance** | Embedded Mermaid ER diagram in `model_documentation.md` — renders natively on GitHub/VS Code |
+| **Visualize the model in Gephi/yEd** | `--export-graph` — JSON node/edge lists or GraphML |
 | **Zero-cost, zero-install** | Python-only, no .NET dependencies |
 
 **Perfect for:** Data engineers onboarding teams, consultants auditing models, organizations building AI copilots for BI.

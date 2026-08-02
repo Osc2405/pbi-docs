@@ -146,3 +146,25 @@ processed model). To verify it against Claude Code:
 This last step is the one thing about the MCP server that automated tests
 (`tests/test_mcp_server.py`) can't cover — they prove protocol correctness against a harness I
 wrote myself, not that a real client actually discovers and calls the tools.
+
+### 8. Exporting the relationship graph (`--export-graph`)
+
+**Problem:** You want to visualize how a model's tables connect — in Gephi, yEd, or a Python/JS
+graph library — instead of reading `relationships.json` by hand.
+
+**Solution:** `--export-graph` (a `--query` mode flag, like `--dependencies`/`--usages`) projects
+`list_tables()`/`get_relationships()` to a generic `{"nodes": [...], "edges": [...]}` graph — every
+table is a node (including isolated ones with no relationships, unlike the Mermaid diagram in
+`model_documentation.md`, which omits them for readability), every relationship is a directed edge
+(`from_table -> to_table`, same direction used throughout the codebase).
+
+```bash
+pbi-docs --query output/my-model --export-graph               # JSON node/edge lists (default)
+pbi-docs --query output/my-model --export-graph graphml > model.graphml   # GraphML XML
+```
+
+GraphML has no scalar attribute type for lists, so a table's `categories` (an array in the JSON
+output) is flattened to a comma-joined string in GraphML only — a documented format difference,
+not a bug. Not exposed as an MCP tool: an agent that already has `list_tables`/`get_relationships`
+as tools can reconstruct the same information without a GraphML/XML blob in its context (see
+`CLAUDE.md` section 4).

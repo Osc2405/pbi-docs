@@ -20,6 +20,7 @@ from .indexed_output import write_indexed_output
 from . import resolver
 from .resolver import ResolverError
 from . import mcp_server
+from . import graph_export
 
 
 def detect_input_format(input_path: str) -> str:
@@ -202,9 +203,18 @@ def _run_query(args) -> int:
             result = resolver.search_measures(args.query, args.search_measures, category=args.category)
         elif args.search_columns:
             result = resolver.search_columns(args.query, args.search_columns, category=args.category)
+        elif args.export_graph:
+            graph = graph_export.build_graph(args.query)
+            if args.export_graph == "graphml":
+                if hasattr(sys.stdout, "reconfigure"):
+                    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+                print(graph_export.to_graphml(graph))
+                return 0
+            result = graph
         else:
             logger.error("--query requires one of: --list-tables, --table, --search-measures, "
-                        "--search-columns, --relationships, --dependencies, --usages")
+                        "--search-columns, --relationships, --dependencies, --usages, "
+                        "--export-graph")
             return 1
 
         if hasattr(sys.stdout, "reconfigure"):
@@ -239,6 +249,8 @@ Usage examples:
   %(prog)s --query output/my-model --relationships --table "Sales"
   %(prog)s --query output/my-model --table "Sales" --measure "Margin %%" --dependencies
   %(prog)s --query output/my-model --table "Sales" --measure "Sales Amount" --usages
+  %(prog)s --query output/my-model --export-graph              # Node/edge JSON graph
+  %(prog)s --query output/my-model --export-graph graphml > model.graphml
   %(prog)s --mcp-serve output/my-model                # Run a read-only MCP server (stdio)
         """
     )
@@ -319,6 +331,10 @@ Usage examples:
     parser.add_argument("--search-columns", type=str, metavar="QUERY",
                         dest="search_columns", help="Query mode: find columns by name substring")
     parser.add_argument("--relationships", action="store_true", help="Query mode: list relationships")
+    parser.add_argument("--export-graph", nargs="?", const="json", choices=["json", "graphml"],
+                        dest="export_graph", metavar="FORMAT",
+                        help="Query mode: project the model's tables/relationships to a graph "
+                             "(json node/edge lists, or graphml XML for Gephi/yEd). Default: json.")
     parser.add_argument("--dependencies", action="store_true",
                         help="Query mode: combine with --table/--measure to list what it references")
     parser.add_argument("--usages", action="store_true",

@@ -472,6 +472,41 @@ solo `.mcp.json`, documentación, y regeneración de `output/`).
 
 ---
 
+### Actualización 2026-07-31 — `--export-graph` (JSON/GraphML) + JSON Schema formal para `index.json` (Fase 5)
+
+Cierra la Fase 5 del roadmap, la última de las fichas "casi gratis" agrupadas en el brainstorm.
+
+- **`pbi_extractor/graph_export.py`** (nuevo módulo): `build_graph(model_dir)` proyecta
+  `resolver.list_tables()`/`get_relationships()` a `{"nodes": [...], "edges": [...]}` — todas las
+  tablas son nodos, incluidas las aisladas (a diferencia del diagrama Mermaid, que las omite por
+  legibilidad; acá el consumidor es una herramienta externa). `to_graphml(graph)` serializa a XML
+  GraphML con solo la librería estándar (`xml.sax.saxutils.escape`/`quoteattr`, sin lxml) —
+  `categories` (lista en JSON) se aplana a string separado por comas en GraphML, único formato sin
+  tipo escalar de lista; diferencia documentada, no un bug.
+- **CLI**: `--export-graph [json|graphml]` como flag de modo `--query` (mismo patrón que
+  `--dependencies`/`--usages`), default `json`. El caso `graphml` retorna temprano imprimiendo XML
+  crudo en vez de pasar por el `print(json.dumps(...))` genérico — único caso especial en
+  `_run_query()`.
+- **Fuera de alcance, decisión explícita:** no se expone como tool MCP — un agente que ya tiene
+  `list_tables`/`get_relationships` puede reconstruir la misma información sin un blob GraphML/XML
+  en el contexto (mismo razonamiento de `CLAUDE.md` sección 4 sobre el grafo liviano).
+- **`docs/index.schema.json`** (nuevo): JSON Schema formal (draft 2020-12) para `index.json`,
+  formalizando la prosa de `docs/index-json-spec.md` (que gana un puntero al schema, sin
+  reescribirse). Cubre solo `index.json` — `tables/*.json`/`relationships.json` varían de forma
+  según TOON/JSON y quedan fuera de este schema.
+- **`jsonschema` agregado como dependencia dev-only** (`pyproject.toml` extras `dev`, decisión
+  confirmada con el usuario vía AskUserQuestion) — el paquete publicado sigue con cero
+  dependencias; solo se importa dentro de tests nuevos en `tests/test_indexed_output.py`, que
+  validan `build_index()` real (json/toon/auto) contra el schema formal.
+- **Verificación manual real** (no solo tests): `pbi-docs --query "output/Sales Sample"
+  --export-graph`/`--export-graph graphml` confirmó 11 nodos/5 aristas en ambos formatos, y que el
+  XML GraphML parsea sin error (`xml.etree.ElementTree`).
+- 13 tests nuevos (`tests/test_graph_export.py`, 3 tests de schema en `test_indexed_output.py`).
+
+Suite completa: 321 tests, todos en verde.
+
+---
+
 ## 0. Contexto del proyecto (no re-investigar, ya validado)
 
 `pbi-docs` es un extractor y documentador de modelos de Power BI, 100% Python, cero dependencias

@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `docs/fabric_compatibility.md`: documents *expected* TMDL compatibility with Microsoft Fabric semantic models, based on the shared public TMDL spec — explicitly marked as not empirically validated (no real Fabric export available in this environment), same treatment as other external blockers (`docs/human_validation_protocol.md`, Anthropic token counting).
 - `.mcp.json` now points at `output/Sales Sample` instead of `output/Supply Chain Sample` (decided in an earlier session, executed now); `docs/use-cases.md` MCP server section updated to match (also fixed a stale "9 tools" count left over from the `find_column_usages` addition — should have been 10).
+- **`--export-graph` CLI flag**: new `pbi_extractor/graph_export.py` (`build_graph()`, `to_graphml()`) projects an already-processed model's tables/relationships to a generic `{nodes, edges}` graph, as `--query` mode JSON (default) or GraphML XML (`--export-graph graphml`) for external tools (Gephi, yEd). Not exposed as an MCP tool — deliberate scope decision, see `CLAUDE.md`.
+- **`docs/index.schema.json`**: formal JSON Schema (draft 2020-12) for `index.json`, formalizing the shape already documented in prose in `docs/index-json-spec.md`. Validated in `tests/test_indexed_output.py` against real `build_index()` output (json/toon/auto) using the `jsonschema` library, now a dev-only test dependency (`pyproject.toml` `dev` extras) — the published package remains zero-dependency.
 
 ## [1.0.0] - 2026-07-28
 
