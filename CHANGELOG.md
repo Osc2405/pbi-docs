@@ -22,6 +22,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`--export-graph` CLI flag**: new `pbi_extractor/graph_export.py` (`build_graph()`, `to_graphml()`) projects an already-processed model's tables/relationships to a generic `{nodes, edges}` graph, as `--query` mode JSON (default) or GraphML XML (`--export-graph graphml`) for external tools (Gephi, yEd). Not exposed as an MCP tool — deliberate scope decision, see `CLAUDE.md`.
 - **`docs/index.schema.json`**: formal JSON Schema (draft 2020-12) for `index.json`, formalizing the shape already documented in prose in `docs/index-json-spec.md`. Validated in `tests/test_indexed_output.py` against real `build_index()` output (json/toon/auto) using the `jsonschema` library, now a dev-only test dependency (`pyproject.toml` `dev` extras) — the published package remains zero-dependency.
 
+## [1.0.1] - 2026-08-03
+
+### Changed
+
+- **Renamed to `pbi-context`.** This is the final release published under the `pbi-docs` name on
+  PyPI — no functional changes from `1.0.0`. Reason: `pbi-docs` collided with an unrelated,
+  pre-existing GitHub project of the same name (`alisonpezzott/pbi-docs`, a Power BI tenant-wide
+  REST API/DAX Studio documentation scraper with real audience reach), creating a real SEO/
+  discoverability ambiguity even though the two tools share no architecture or feature overlap.
+  Continued development, the actual `1.1.0` feature release (columns diff-impact, Mermaid ER
+  diagram, `--export-graph`, real-tokenizer validation, pre-commit hook), and all future releases
+  live at [`pbi-context`](https://github.com/Osc2405/pbi-context) /
+  `pip install pbi-context`. See `PYPI_RENAMED_NOTICE.md`.
+
 ## [1.0.0] - 2026-07-28
 
 ### Added

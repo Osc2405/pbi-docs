@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pbi-docs"
-version = "1.0.0"
-description = "AI context engine for Power BI models: indexed, queryable context for LLM agents (MCP server, CLI, docs), zero dependencies"
+version = "1.0.1"
+description = "Renamed to pbi-context — see https://github.com/Osc2405/pbi-context. This package receives no further updates."
 requires-python = ">=3.10"
-readme = "README.md"
+readme = "PYPI_RENAMED_NOTICE.md"
 license = {text = "MIT"}
 authors = [{name = "Oscar Rosero", email = "orosero2405@gmail.com"}]
 keywords = ["powerbi", "metadata", "dax", "documentation", "bi", "pbit", "mcp", "ai-agent", "llm-context"]
