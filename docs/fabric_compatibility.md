@@ -54,13 +54,13 @@ producir una carpeta `.SemanticModel/definition/` equivalente en estructura.
 
 Un export real de un modelo semántico de Fabric — vía Git integration de un workspace Fabric
 (produce la misma estructura `.SemanticModel/definition/*.tmdl` que PBIP) — corrido contra el
-pipeline completo (`pbi-docs -i <carpeta> -o <salida>`), documentando el resultado con el mismo
+pipeline completo (`pbi-context -i <carpeta> -o <salida>`), documentando el resultado con el mismo
 formato que `docs/pbip_validation_report.md` (bugs encontrados, si los hay; estado final;
 alcance). Hasta entonces, este documento permanece en estado 🟡, no ✅.
 
 ## 4. Qué NO se afirma
 
-Este documento no afirma que `pbi-docs` funcione contra Fabric — afirma que hay una base pública
+Este documento no afirma que `pbi-context` funcione contra Fabric — afirma que hay una base pública
 razonable para esperar que funcione, y documenta exactamente qué falta para confirmarlo. No usar
 esta nota como evidencia de soporte probado en comunicación externa (README, marketing) sin
 aclarar el matiz "esperado, no validado".

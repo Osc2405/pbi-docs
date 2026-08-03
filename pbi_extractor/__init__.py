@@ -1,11 +1,11 @@
 """
-pbi-docs - Power BI Documentation Generator
+pbi-context - Power BI Documentation Generator
 
 Tool to extract, clean and document Power BI data models (.pbit).
 Generates human-readable documentation and context files for agents/LLMs.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __author__ = "Oscar Rosero"
 __email__ = "orosero2405@gmail.com"
 

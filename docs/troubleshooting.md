@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Moved out of [README.md](https://github.com/Osc2405/pbi-docs/blob/main/README.md) to keep the
+Moved out of [README.md](https://github.com/Osc2405/pbi-context/blob/main/README.md) to keep the
 landing page short. Covers common errors, how to verify a fresh install, and expected output.
 
 ## Common Errors
@@ -10,7 +10,7 @@ landing page short. Covers common errors, how to verify a fresh install, and exp
 - If it fails, `schema_snippet.txt` is saved in the output folder for diagnosis.
 
 **Paths with spaces/special characters**:
-- Use quotes in the CLI: `pbi-docs -i "data/My File.pbit"`
+- Use quotes in the CLI: `pbi-context -i "data/My File.pbit"`
 - Prefer paths within `data/`.
 
 **No documentation generated**:
@@ -25,7 +25,7 @@ landing page short. Covers common errors, how to verify a fresh install, and exp
 Run a quick test with your `.pbit` file:
 
 ```bash
-pbi-docs --input "data/pbit/my-model.pbit"
+pbi-context --input "data/pbit/my-model.pbit"
 ```
 
 **Expected output:**
@@ -64,10 +64,10 @@ This project requires no dependencies. If you see this error, verify your Python
 python --version  # Must be 3.10+
 ```
 
-**Error: "pbi-docs not recognized"**
+**Error: "pbi-context not recognized"**
 ```bash
 # Reinstall the package
-pip install pbi-docs
+pip install pbi-context
 # Editable/dev install instead
 pip install -e .
 # Or use python -m

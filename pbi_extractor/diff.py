@@ -159,7 +159,7 @@ def diff_impact(diff: dict, model_dir_a, model_dir_b, *, transitive: bool = Fals
     Removed measures/columns are looked up in model_dir_a (the OLD model) —
     those references are now broken. Modified measures/columns are looked up
     in model_dir_b (the NEW model) — those callers may now behave
-    differently. Both directories must already be pbi-docs output
+    differently. Both directories must already be pbi-context output
     (tables/*.json present).
     """
     removed_impact = []

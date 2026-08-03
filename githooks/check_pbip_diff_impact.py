@@ -2,11 +2,11 @@
 """
 Pre-commit guard for repos that version Power BI models (.pbip/.pbit):
 blocks a commit that removes or modifies a measure or column other measures
-still depend on (a broken DAX reference), using pbi-docs's own
+still depend on (a broken DAX reference), using pbi-context's own
 `--diff --diff-impact --transitive`.
 
 Reference implementation — see docs/pre_commit_hook.md for how to adopt this
-in a repo that actually has .pbip/.pbit models. This repo (pbi-docs itself)
+in a repo that actually has .pbip/.pbit models. This repo (pbi-context itself)
 does not wire this hook up on itself: it only has static test fixtures, not
 actively-edited models.
 
@@ -16,7 +16,7 @@ just the working tree) against HEAD, for every distinct .pbip/.pbit/
 paths, not git refs, so both versions are materialized into temp directories
 via `git archive` (HEAD) / `git write-tree` + `git archive` (staged).
 
-Fail-open if pbi-docs isn't installed or crashes unexpectedly (see
+Fail-open if pbi-context isn't installed or crashes unexpectedly (see
 docs/pre_commit_hook.md) so a broken local environment doesn't block
 everyone's commits. Fail-closed only on an actual detected breaking impact.
 Skip this check entirely with `git commit --no-verify`.
@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import List, Optional, Set
 
 INSTALL_HINT = (
-    "pbi-docs is not runnable - install it with `pip install pbi-docs` "
+    "pbi-context is not runnable - install it with `pip install pbi-context` "
     "or `pip install -e .` (local dev). See docs/pre_commit_hook.md. "
     "Skipping this check for now (fail-open)."
 )
@@ -144,13 +144,13 @@ def _extract_archive(repo_root: Path, ref: str, path: str, dest: Path) -> bool:
     return True
 
 
-def _find_pbi_docs_cmd() -> Optional[List[str]]:
-    """Prefer the `pbi-docs` console script; fall back to `python -m
+def _find_pbi_context_cmd() -> Optional[List[str]]:
+    """Prefer the `pbi-context` console script; fall back to `python -m
     pbi_extractor.cli` if the package is importable but pip's Scripts/bin
     directory isn't on PATH (a common Windows gotcha) — same interpreter
     that's running this hook, so it's a meaningful fallback rather than a
     guess."""
-    exe = shutil.which("pbi-docs")
+    exe = shutil.which("pbi-context")
     if exe is not None:
         return [exe]
     if importlib.util.find_spec("pbi_extractor") is not None:
@@ -158,9 +158,9 @@ def _find_pbi_docs_cmd() -> Optional[List[str]]:
     return None
 
 
-def _check_one_unit(repo_root: Path, unit: str, pbi_docs_cmd: List[str]) -> Optional[dict]:
-    """Returns the diff dict if the unit existed in HEAD and pbi-docs ran
-    successfully, else None (new project, or pbi-docs failed on this unit —
+def _check_one_unit(repo_root: Path, unit: str, pbi_context_cmd: List[str]) -> Optional[dict]:
+    """Returns the diff dict if the unit existed in HEAD and pbi-context ran
+    successfully, else None (new project, or pbi-context failed on this unit —
     caller decides how to treat that)."""
     with tempfile.TemporaryDirectory(prefix="pbip-hook-base-") as base_dir, \
          tempfile.TemporaryDirectory(prefix="pbip-hook-staged-") as staged_dir, \
@@ -178,13 +178,13 @@ def _check_one_unit(repo_root: Path, unit: str, pbi_docs_cmd: List[str]) -> Opti
         staged_path = staged_dir / unit
 
         result = subprocess.run(
-            [*pbi_docs_cmd, "--diff", str(base_path), str(staged_path),
+            [*pbi_context_cmd, "--diff", str(base_path), str(staged_path),
              "--diff-impact", "--transitive", "-o", str(out_dir)],
             capture_output=True, text=True,
         )
         diff_path = out_dir / f"diff_{base_path.stem}_vs_{staged_path.stem}.json"
         if result.returncode != 0 or not diff_path.exists():
-            print(f"Warning: pbi-docs failed comparing '{unit}': {result.stderr.strip()}", file=sys.stderr)
+            print(f"Warning: pbi-context failed comparing '{unit}': {result.stderr.strip()}", file=sys.stderr)
             return None
         return json.loads(diff_path.read_text(encoding="utf-8"))
 
@@ -208,16 +208,16 @@ def main() -> int:
     staged = _staged_paths(repo_root)
     units = _detect_project_roots(staged)
     if not units:
-        return 0  # nothing Power BI-shaped staged, don't even look for pbi-docs
+        return 0  # nothing Power BI-shaped staged, don't even look for pbi-context
 
-    pbi_docs_cmd = _find_pbi_docs_cmd()
-    if pbi_docs_cmd is None:
+    pbi_context_cmd = _find_pbi_context_cmd()
+    if pbi_context_cmd is None:
         print(f"Warning: {INSTALL_HINT}")
         return 0
 
     reports = []
     for unit in sorted(units):
-        diff = _check_one_unit(repo_root, unit, pbi_docs_cmd)
+        diff = _check_one_unit(repo_root, unit, pbi_context_cmd)
         if diff is not None and _has_breaking_impact(diff):
             reports.append(_format_impact_report(unit, diff))
 

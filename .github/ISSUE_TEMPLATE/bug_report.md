@@ -11,7 +11,7 @@ A clear and concise description of what the bug is.
 
 **To Reproduce**
 Steps to reproduce the behavior, e.g.:
-1. Run `pbi-docs -i ...`
+1. Run `pbi-context -i ...`
 2. See error
 
 If possible, attach a minimal sample `.pbit`/`.pbip` that reproduces the issue, or describe the
@@ -22,7 +22,7 @@ model's structure (table/column/measure names, DAX patterns) if you can't share 
 A clear and concise description of what you expected to happen.
 
 **Environment**
-- `pbi-docs` version: (run `pip show pbi-docs`)
+- `pbi-context` version: (run `pip show pbi-context`)
 - Python version: (run `python --version`)
 - OS: (Windows / macOS / Linux)
 

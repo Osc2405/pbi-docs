@@ -35,7 +35,7 @@ _JSON_CACHE: dict = {}
 
 def _load_json(path: Path) -> dict:
     if not path.exists():
-        raise ResolverError(f"Not found: {path}. Run pbi-docs on the model first.")
+        raise ResolverError(f"Not found: {path}. Run pbi-context on the model first.")
     key = str(path.resolve())
     mtime = path.stat().st_mtime
     cached = _JSON_CACHE.get(key)

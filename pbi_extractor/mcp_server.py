@@ -162,7 +162,7 @@ TOOLS = [
                         "directory: added/removed/modified measures, columns, relationships, "
                         "plus impact analysis (which measures reference each removed/modified "
                         "measure or column). Use for 'what changed and what might break' after "
-                        "editing a model. Both directories must already be processed by pbi-docs.",
+                        "editing a model. Both directories must already be processed by pbi-context.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -222,7 +222,7 @@ def _handle(model_dir: Path, msg: dict) -> Optional[dict]:
             "result": {
                 "protocolVersion": PROTOCOL_VERSION,
                 "capabilities": {"tools": {}},
-                "serverInfo": {"name": "pbi-docs", "version": __version__},
+                "serverInfo": {"name": "pbi-context", "version": __version__},
             },
         }
 
@@ -266,7 +266,7 @@ def run(model_dir: Path) -> None:
     logging.basicConfig(stream=sys.stderr, level=logging.INFO,
                         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     model_dir = Path(model_dir)
-    logger.info(f"pbi-docs MCP server starting, bound to: {model_dir}")
+    logger.info(f"pbi-context MCP server starting, bound to: {model_dir}")
     if hasattr(sys.stdin, "reconfigure"):
         sys.stdin.reconfigure(encoding="utf-8", errors="replace")
     for line in sys.stdin:

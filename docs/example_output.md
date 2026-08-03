@@ -1,6 +1,6 @@
 # Generated Documentation Example
 
-Moved out of [README.md](https://github.com/Osc2405/pbi-docs/blob/main/README.md) to keep the
+Moved out of [README.md](https://github.com/Osc2405/pbi-context/blob/main/README.md) to keep the
 landing page short. This is a complete example of `model_documentation.md` for a sample model
 (`my-model`).
 

@@ -1,4 +1,4 @@
-# Development dependencies for pbi-docs
+# Development dependencies for pbi-context
 # Install with: pip install -r requirements-dev.txt
 
 # Build tools

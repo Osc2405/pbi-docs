@@ -1,6 +1,11 @@
-# CLAUDE.md — pbi-docs: soporte PBIP/TMDL + mejoras de contexto para agentes
+# CLAUDE.md — pbi-context: soporte PBIP/TMDL + mejoras de contexto para agentes
 
-Este archivo es la fuente de verdad para las próximas fases de desarrollo de `pbi-docs`.
+> Renombrado de `pbi-docs` a `pbi-context` el 2026-08-03 — ver la entrada fechada al final de este
+> archivo para el porqué. Las entradas fechadas anteriores a esa se dejan tal cual (narran hechos
+> de cuando el proyecto se llamaba `pbi-docs`), consistente con el criterio de no reescribir
+> historia que este mismo archivo ya aplica en otras partes.
+
+Este archivo es la fuente de verdad para las próximas fases de desarrollo de `pbi-context`.
 Léelo completo antes de proponer un plan. Trabajar siempre en **Plan Mode** antes de tocar código:
 presentar el plan, esperar aprobación explícita, y solo entonces implementar por fases.
 
@@ -564,9 +569,78 @@ ya estaban limpios).
 
 ---
 
+### Actualización 2026-08-03 — Rename `pbi-docs` → `pbi-context`
+
+El usuario planteó dos problemas de mercado antes de seguir invirtiendo en SEO/discoverability
+sobre el nombre actual: (1) `pbi-docs` ya existe como proyecto de GitHub de otra persona con
+alcance real, y (2) hay otros proyectos que hacen algo similar — pidió validar diferenciación y
+proponer/confirmar un nombre nuevo (candidato propio: `pbi-context`).
+
+**Investigación (WebFetch/WebSearch, no de memoria):**
+
+- **`alisonpezzott/pbi-docs`** (58 stars, autor con alcance real — YouTube, GitHub Sponsors): la
+  colisión real. Mismo nombre exacto, mismo lenguaje (Python), mismo tema general ("documentar
+  modelos Power BI"), pero arquitectura totalmente distinta — scraper de tenant completo vía REST
+  API + DAX Studio + Service Principal/Entra, salida en Word, sin TMDL/PBIP, sin IA/MCP. Cero
+  solapamiento de features, colisión pura de SEO/nombre.
+- **`MinaSaad1/pbi-cli`** (431 stars): requiere Windows + Power BI Desktop corriendo (interop
+  .NET/TOM en vivo), lee y escribe, sin servidor MCP (usa skills de Claude Code directamente).
+  Se solapa en "IA + Power BI" pero no en el ángulo read-only/cero-dependencias/multiplataforma.
+- **`mudassir09/pbi-enterprise-cli`**: el solapamiento de features más real — parsea TMDL/PBIP,
+  tiene servidor MCP, genera ERDs Mermaid — pero es una plataforma completa de gobierno/CI-CD
+  (escribe TMDL, reglas BPA, ciclo de vida Fabric completo, tiene dependencias). Categoría de
+  producto distinta a un compilador de contexto liviano de solo lectura.
+- Conclusión: la diferenciación de `pbi-docs` (hoy `pbi-context`) se sostiene — cero dependencias,
+  solo lectura por diseño, parser de archivos estáticos (no requiere Desktop/Service corriendo),
+  alcance deliberadamente acotado. El problema real era específicamente el nombre idéntico a
+  `alisonpezzott/pbi-docs`, no falta de diferenciación de producto.
+
+**Decisión (confirmada con el usuario vía AskUserQuestion):** renombrar a **`pbi-context`** —
+verificado disponible en PyPI (404 real, no asumido) y sin colisión en GitHub. Ejecución:
+
+- PyPI: el listing viejo de `pbi-docs` (v1.0.0) no se puede renombrar in-place — se publicó una
+  versión final `1.0.1` de solo aviso (`description`/`readme` apuntando a `pbi-context`, sin
+  cambios funcionales) antes de tocar el código principal, en su propia rama
+  (`release/pbi-docs-1.0.1-notice`) partiendo de `main` tal cual estaba, para no mezclar el aviso
+  con el resto del rename.
+- Código: corte limpio, sin alias `pbi-docs` en el comando CLI (adopción mínima, publicado hacía
+  pocos días) — `pyproject.toml` (`name`, entry point, urls), `.mcp.json`, `serverInfo.name` del
+  MCP server, mensajes de error/log, `githooks/check_pbip_diff_impact.py`
+  (`shutil.which("pbi-context")`, antes `"pbi-docs"` — el cambio más delicado, es lo que localiza
+  el binario instalado), y toda la prosa de docs/README. Tests que aseveraban sobre estas strings
+  (`test_mcp_server.py`, `test_githooks_pbip_diff.py`) actualizados en el mismo commit.
+- Excepción deliberada, mismo criterio de "no reescribir historia" que ya aplica este archivo:
+  `CHANGELOG.md` y las entradas fechadas de este archivo anteriores a hoy no se tocan (describen
+  hechos verídicos de cuando el proyecto se llamaba `pbi-docs`); tampoco los informes ya corridos
+  bajo el nombre viejo (`docs/*_report.md`, `scripts/fixtures/*` — transcripciones reales de
+  comandos ya ejecutados). Sí se actualizó `docs/human_validation_protocol.md` pese a estar
+  también en `docs/`: a diferencia de los `*_report.md`, es un protocolo **no ejecutado todavía**
+  ("en curso", bloqueado en reclutamiento) — no es reescribir historia, es mantener vigente un
+  documento que se va a correr a futuro bajo el nombre nuevo.
+- Versión bump a `1.1.0` (no reset a `1.0.0` ni salto a `2.0.0`): una sola línea de versiones
+  coherente en este repo/git history; el proyecto PyPI nuevo arranca ya maduro (322 tests) aunque
+  sea su primer release ahí. `CHANGELOG.md` folded `[Unreleased]` (columnas en diff-impact,
+  diagrama Mermaid, flag `--column`, `--export-graph`, `index.schema.json`) + el trabajo de SEO/
+  community health de la sesión anterior (README, `CODE_OF_CONDUCT.md`, `SECURITY.md`, issue
+  templates) + la nota del rename, todo bajo `## [1.1.0]`.
+- **Fuera de lo que se ejecuta en esta sesión** (confirmado con el usuario): rename del repo de
+  GitHub (`Osc2405/pbi-docs` → `Osc2405/pbi-context`) queda para que el usuario lo haga manualmente
+  desde Settings — acción irreversible sobre un recurso compartido. Nuevo Trusted Publisher OIDC en
+  pypi.org para el proyecto `pbi-context` y el publish real de `pbi-docs 1.0.1`/`pbi-context 1.1.0`
+  también quedan de su lado — ambos son publicaciones reales/irreversibles, no algo para disparar
+  sin confirmación explícita en el momento.
+- Trabajo en 3 ramas: `docs/seo-and-community-health` (el trabajo de la sesión anterior, sin
+  commitear hasta ahora, commiteado aparte para no mezclar motivos de cambio),
+  `release/pbi-docs-1.0.1-notice` (el aviso, independiente), `rename/pbi-context` (el rename en
+  sí, apilada sobre `docs/seo-and-community-health`). `gh` no está instalado en este entorno
+  (confirmado de nuevo esta sesión) — las ramas se empujan a `origin` pero la creación de PRs/
+  releases queda para el usuario vía la interfaz de GitHub.
+
+---
+
 ## 0. Contexto del proyecto (no re-investigar, ya validado)
 
-`pbi-docs` es un extractor y documentador de modelos de Power BI, 100% Python, cero dependencias
+`pbi-context` es un extractor y documentador de modelos de Power BI, 100% Python, cero dependencias
 externas. Hoy solo soporta `.pbit` (ZIP con un JSON `DataModelSchema` en formato TMSL). Pipeline actual:
 
 ```
@@ -723,7 +797,7 @@ cada archivo.
 
 ## 3. Graphify — herramienta de apoyo al desarrollo (NO es una dependencia del paquete)
 
-No forma parte del código de `pbi-docs`. Es una herramienta externa (`safishamsi/graphify`) que
+No forma parte del código de `pbi-context`. Es una herramienta externa (`safishamsi/graphify`) que
 se puede correr localmente durante el desarrollo para navegar cómo se conectan los módulos del
 repo mientras se implementan las fases 1 y 2, especialmente útil para no romper dependencias
 entre `processor.py` y los nuevos extractores.

@@ -94,7 +94,7 @@ def test_initialize_response_shape(model_dir):
     s = ServerSession(model_dir)
     resp = s.request("initialize", {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "t", "version": "0"}})
     assert resp["result"]["protocolVersion"] == "2025-06-18"
-    assert resp["result"]["serverInfo"]["name"] == "pbi-docs"
+    assert resp["result"]["serverInfo"]["name"] == "pbi-context"
     assert "tools" in resp["result"]["capabilities"]
     s.close()
 

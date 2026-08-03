@@ -145,7 +145,7 @@ def test_has_breaking_impact_false_when_column_used_by_empty():
 # main() short-circuit behavior (in-process, monkeypatched — no real repo)
 # ---------------------------------------------------------------------------
 
-def test_main_skips_pbi_docs_lookup_when_nothing_staged(monkeypatch, tmp_path):
+def test_main_skips_pbi_context_lookup_when_nothing_staged(monkeypatch, tmp_path):
     monkeypatch.setattr(subprocess, "run",
                          lambda *a, **k: subprocess.CompletedProcess(a, 0, stdout=str(tmp_path), stderr=""))
     monkeypatch.setattr(hook, "_staged_paths", lambda repo_root: ["README.md"])
@@ -154,24 +154,24 @@ def test_main_skips_pbi_docs_lookup_when_nothing_staged(monkeypatch, tmp_path):
     def _spy():
         called["n"] += 1
         return None
-    monkeypatch.setattr(hook, "_find_pbi_docs_cmd", _spy)
+    monkeypatch.setattr(hook, "_find_pbi_context_cmd", _spy)
 
     assert hook.main() == 0
-    assert called["n"] == 0, "pbi-docs lookup must not happen when nothing pbip/pbit-shaped is staged"
+    assert called["n"] == 0, "pbi-context lookup must not happen when nothing pbip/pbit-shaped is staged"
 
 
-def test_main_fails_open_when_pbi_docs_not_found(monkeypatch, tmp_path, capsys):
+def test_main_fails_open_when_pbi_context_not_found(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(subprocess, "run",
                          lambda *a, **k: subprocess.CompletedProcess(a, 0, stdout=str(tmp_path), stderr=""))
     monkeypatch.setattr(hook, "_staged_paths", lambda repo_root: ["MyModel.pbit"])
-    monkeypatch.setattr(hook, "_find_pbi_docs_cmd", lambda: None)
+    monkeypatch.setattr(hook, "_find_pbi_context_cmd", lambda: None)
 
     assert hook.main() == 0
     assert "not runnable" in capsys.readouterr().out
 
 
 # ---------------------------------------------------------------------------
-# End-to-end: real temp git repo, real pbi-docs subprocess call
+# End-to-end: real temp git repo, real pbi-context subprocess call
 # ---------------------------------------------------------------------------
 
 def _init_repo(tmp_path: Path) -> Path:

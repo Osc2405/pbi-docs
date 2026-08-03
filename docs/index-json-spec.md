@@ -1,7 +1,7 @@
 # `index.json` — open format specification
 
 `index.json` is a small, stable contract meant to be consumed directly by any tool — not just
-pbi-docs' own CLI/resolver/MCP server. This section documents it so other parsers can be built
+pbi-context' own CLI/resolver/MCP server. This section documents it so other parsers can be built
 against it without reading `pbi_extractor` source.
 
 By default, `index.json`, `tables/*.json`, and `relationships.json` are written **compact** (no

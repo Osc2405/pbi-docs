@@ -1,12 +1,12 @@
 ---
 name: Share your experience
-about: Tell us how you used pbi-docs and whether it helped
+about: Tell us how you used pbi-context and whether it helped
 title: "[EXPERIENCE] "
 labels: feedback
 assignees: ''
 ---
 
-Thanks for trying `pbi-docs`! A few quick questions — answer whichever apply, skip the rest.
+Thanks for trying `pbi-context`! A few quick questions — answer whichever apply, skip the rest.
 
 **What did you use it for?**
 (e.g. documenting a model for a new teammate, auditing a model you didn't build, connecting an AI

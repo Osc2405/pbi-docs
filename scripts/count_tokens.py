@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Real token counts for pbi-docs context comparisons (Condition A/B/C), via a
+Real token counts for pbi-context context comparisons (Condition A/B/C), via a
 provider's dedicated count_tokens endpoint (no generation cost).
 
 Not part of the pbi_extractor package: dev-only tool for the Horizonte 3 human
@@ -100,7 +100,7 @@ def main() -> int:
             from google import genai  # noqa: F401
     except ImportError:
         print(
-            f"This script needs the '{provider['pip']}' package, not a pbi-docs dependency.\n"
+            f"This script needs the '{provider['pip']}' package, not a pbi-context dependency.\n"
             f"Run: pip install {provider['pip']}",
             file=sys.stderr,
         )

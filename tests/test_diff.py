@@ -186,7 +186,7 @@ def test_relationship_is_active_change():
 # ---------------------------------------------------------------------------
 
 def _write_model_dir(tmp_path, name, meta):
-    """Write a minimal but real pbi-docs output dir (tables/*.json +
+    """Write a minimal but real pbi-context output dir (tables/*.json +
     metadata.json) so resolver.find_measure_usages() can be pointed at it."""
     model_dir = tmp_path / name
     model_dir.mkdir()

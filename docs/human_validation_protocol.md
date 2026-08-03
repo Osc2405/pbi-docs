@@ -7,7 +7,7 @@ propio informe aclara que no reemplaza la validación con desarrolladores/analis
 Este documento es el protocolo ejecutable para correr ese experimento.
 
 **Hipótesis a probar (sección 6.2 del análisis):**
-> Con el Context Resolver/MCP de pbi-docs, los agentes de IA (asistidos por un humano) responden
+> Con el Context Resolver/MCP de pbi-context, los agentes de IA (asistidos por un humano) responden
 > preguntas sobre modelos Power BI con la misma precisión que usando el contexto completo, pero
 > con al menos 70% menos tokens y 40% menos tiempo.
 
@@ -30,14 +30,14 @@ Cumple el rango pedido por el diseño original (10-15 tablas, 30-50 measures) y,
 fixture sintético, incluye patrones reales de exportación (calculation-group-like tables sin
 partición, DAX con variables, una relación inactiva, formato `$#,##0` con distintos separadores).
 
-Al descargarlo y correr `pbi-docs` contra él se encontró y corrigió un bug real en
+Al descargarlo y correr `pbi-context` contra él se encontró y corrigió un bug real en
 `pbip_extractor.py`: las medidas con expresión DAX delimitada por triple backtick
 (`` measure X = ``` ... ``` ``, sintaxis que usan Tabular Editor y varios formateadores DAX) se
 extraían como el literal `` ``` `` en vez del DAX real. Corregido (7 medidas afectadas en este
 modelo, ver tabla "Dynamic Measure"); test de regresión en
 `tests/test_pbip_extractor.py::test_parse_measure_backtick_fenced_dax`.
 
-Para regenerar la salida de pbi-docs (Condición B/C) tras cualquier cambio:
+Para regenerar la salida de pbi-context (Condición B/C) tras cualquier cambio:
 ```
 python -m pbi_extractor.cli --input "files_test/Sales Sample.pbip" --output output
 ```
@@ -49,8 +49,8 @@ python -m pbi_extractor.cli --input "files_test/Sales Sample.pbip" --output outp
 | Condición | Material que ve el participante |
 | :--- | :--- |
 | **A — TMDL crudo** | Los archivos en `files_test/Sales Sample.SemanticModel/definition/` (11 `.tmdl` de tablas + `model.tmdl` + `relationships.tmdl` + `database.tmdl`). Sin herramienta de IA — el participante lee los archivos directamente, como si documentara el modelo a mano. |
-| **B — JSON de pbi-docs** | `output/Sales Sample/` completo (`index.json`, `tables/*.json`, `relationships.json`, `metadata.json`) — carga completa, sin consulta selectiva. |
-| **C — MCP/Resolver acotado** | Claude Code (u otro cliente MCP) conectado al servidor `pbi-docs` vía `.mcp.json`, apuntando a `output/Sales Sample` (ajustar el path del `.mcp.json` actual, que hoy apunta a `output/Supply Chain Sample`). El participante pregunta en lenguaje natural; el agente decide qué tool llamar (`list_tables`, `get_table`, `get_measure`, `search_measures`, `search_columns`, `get_relationships`). |
+| **B — JSON de pbi-context** | `output/Sales Sample/` completo (`index.json`, `tables/*.json`, `relationships.json`, `metadata.json`) — carga completa, sin consulta selectiva. |
+| **C — MCP/Resolver acotado** | Claude Code (u otro cliente MCP) conectado al servidor `pbi-context` vía `.mcp.json`, apuntando a `output/Sales Sample` (ajustar el path del `.mcp.json` actual, que hoy apunta a `output/Supply Chain Sample`). El participante pregunta en lenguaje natural; el agente decide qué tool llamar (`list_tables`, `get_table`, `get_measure`, `search_measures`, `search_columns`, `get_relationships`). |
 
 **Nota sobre A:** en el proxy automatizado (agentes de IA), la condición A fue un agente leyendo
 TMDL crudo. Con humanos reales hay una variante a decidir: ¿el participante lee el TMDL crudo él
@@ -130,7 +130,7 @@ sección se mantiene como versión legible para correr sesiones humanas.
 | 6 | Media | ¿A qué tabla pertenece la measure "Margin %"? | Sales |
 | 7 | Media | ¿Qué expresión DAX tiene la measure "# Stores"? | `COUNTROWS('Store')` |
 | 8 | Media | Listá todas las columnas ocultas (`isHidden`) de la tabla "Sales". | Quantity, CustomerKey, StoreKey, ProductKey, Net Price, Unit Cost (6 columnas) |
-| 9 | Media | ¿Qué categoría de negocio (revenue/cost/margin/...) le asigna pbi-docs a la measure "Cost"? | cost |
+| 9 | Media | ¿Qué categoría de negocio (revenue/cost/margin/...) le asigna pbi-context a la measure "Cost"? | cost |
 | 10 | Media | ¿Qué columna de la tabla "Customer" tiene tipo de dato `dateTime`? | Birthday |
 | 11 | Difícil | En la relación donde `Sales.ProductKey` es el lado "muchos", ¿qué tabla es el lado "uno"? | Product |
 | 12 | Difícil | ¿Cómo se llama la measure que calcula la diferencia entre "Sales Amount" y "Sales Amount (LY)"? | `Sales Amount  (Δ LY)` (nota: doble espacio en el nombre real) |
@@ -190,7 +190,7 @@ solo citar la cifra más favorable).
 - Publicación de resultados como estudio de caso — posterior a correr el experimento (sección 6.3
   del análisis de posicionamiento).
 - Validación con LLMs de otros proveedores (GPT, Gemini) — este protocolo mide participantes
-  humanos, no la generalización de pbi-docs a otros modelos de IA.
+  humanos, no la generalización de pbi-context a otros modelos de IA.
 
 **Actualización (2026-07-23):** `docs/answer_quality_gemini_report.md` corrió calidad de
 respuesta con Gemini real (function calling) sobre este mismo set de 20 preguntas — 70/90/95% de

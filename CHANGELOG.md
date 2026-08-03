@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-03
+
+### Changed
+
+- **BREAKING: renamed from `pbi-docs` to `pbi-context`.** PyPI package name, CLI command
+  (`pbi-docs` → `pbi-context`, no compatibility alias — adoption of the old name was minimal),
+  MCP server name (`serverInfo.name` in the `initialize` handshake), and the GitHub repository.
+  Reason: `pbi-docs` collided with an unrelated, pre-existing GitHub project of the same name
+  (`alisonpezzott/pbi-docs`, a Power BI tenant-wide REST API/DAX Studio documentation scraper with
+  real audience reach) — same name, same general topic, zero architectural or feature overlap, but
+  a real SEO/discoverability ambiguity. The old `pbi-docs` PyPI listing received one final `1.0.1`
+  release pointing installers here and gets no further updates.
+
 ### Added
 
 - **`--diff-impact` extended to columns**: `resolver.find_column_usages(model_dir, table_name, column_name, *, transitive=False)` — impact analysis for a column (which measures reference it in their DAX, directly or transitively), mirroring `find_measure_usages()`. No `find_column_dependencies()` counterpart: a column has no DAX expression of its own in this model, so "what does a column depend on" doesn't apply.
@@ -15,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `githooks/check_pbip_diff_impact.py`: `_has_breaking_impact()`/`_format_impact_report()` now also check `columns_removed_impact`/`columns_modified_impact` — the hook previously only blocked measure-breaking commits, letting a removed/modified column that a measure's DAX still references through silently.
 - **Mermaid ER diagram embedded in `model_documentation.md`**: `documentation.generate_mermaid_er(cleaned_metadata)` renders a simplified entity-relationship diagram (crow's-foot cardinality, solid/dotted line for active/inactive) directly from the relationships already in `cleaned_metadata` — no new extraction. Isolated tables (no relationships) are omitted. New i18n key `diagram_isolated_note` (en/es).
 - **`--column` flag for `--query` mode**, paired with `--usages`/`--transitive` (calls the existing `resolver.find_column_usages()`) — closes a CLI/MCP asymmetry where column impact analysis was only reachable via `--diff-impact` or the MCP tool, not directly from `--query`. No `--column --dependencies` pairing, same reason `find_column_dependencies()` doesn't exist (see the `--diff-impact` columns entry above).
+- `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1) and `SECURITY.md` (vulnerability reporting via GitHub Private Vulnerability Reporting, project security profile).
+- `.github/ISSUE_TEMPLATE/` — bug report, "share your experience" feedback template, and `config.yml` disabling blank issues.
 
 ### Documentation
 
@@ -22,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.mcp.json` now points at `output/Sales Sample` instead of `output/Supply Chain Sample` (decided in an earlier session, executed now); `docs/use-cases.md` MCP server section updated to match (also fixed a stale "9 tools" count left over from the `find_column_usages` addition — should have been 10).
 - **`--export-graph` CLI flag**: new `pbi_extractor/graph_export.py` (`build_graph()`, `to_graphml()`) projects an already-processed model's tables/relationships to a generic `{nodes, edges}` graph, as `--query` mode JSON (default) or GraphML XML (`--export-graph graphml`) for external tools (Gephi, yEd). Not exposed as an MCP tool — deliberate scope decision, see `CLAUDE.md`.
 - **`docs/index.schema.json`**: formal JSON Schema (draft 2020-12) for `index.json`, formalizing the shape already documented in prose in `docs/index-json-spec.md`. Validated in `tests/test_indexed_output.py` against real `build_index()` output (json/toon/auto) using the `jsonschema` library, now a dev-only test dependency (`pyproject.toml` `dev` extras) — the published package remains zero-dependency.
+- **README overhaul for SEO/discoverability**: H1 fix, sharper opening pitch, test count now points at the Tests badge instead of a hardcoded number, code fences decoupled from Windows/PowerShell (bash by default, PowerShell notes collapsed into a `<details>` block), body thinned with content moved to `docs/troubleshooting.md` and `docs/example_output.md`, all relative links converted to absolute `github.com` URLs (required for correct rendering on the PyPI project page), a new FAQ section, and an honest, dated Project Status/Roadmap.
 
 ## [1.0.0] - 2026-07-28
 

@@ -1,5 +1,5 @@
 """
-Internationalization support for pbi-docs.
+Internationalization support for pbi-context.
 Provides translations for documentation strings.
 """
 

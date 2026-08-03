@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/Osc2405/pbi-docs/blob/main/docs/index.schema.json",
-  "title": "pbi-docs index.json",
+  "$id": "https://github.com/Osc2405/pbi-context/blob/main/docs/index.schema.json",
+  "title": "pbi-context index.json",
   "description": "Formal schema for index.json, the lightweight per-model summary + file-pointer contract documented in prose in docs/index-json-spec.md. Does NOT cover tables/<Name>.json or relationships.json, which can contain TOON-encoded blocks depending on --index-format; index.json itself never does.",
   "type": "object",
   "required": [
