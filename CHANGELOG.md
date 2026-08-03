@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New MCP tool `find_column_usages` (thin wrapper over the resolver function, same shape as `find_measure_usages`); `diff_impact` tool description updated to mention column impact.
 - `githooks/check_pbip_diff_impact.py`: `_has_breaking_impact()`/`_format_impact_report()` now also check `columns_removed_impact`/`columns_modified_impact` — the hook previously only blocked measure-breaking commits, letting a removed/modified column that a measure's DAX still references through silently.
 - **Mermaid ER diagram embedded in `model_documentation.md`**: `documentation.generate_mermaid_er(cleaned_metadata)` renders a simplified entity-relationship diagram (crow's-foot cardinality, solid/dotted line for active/inactive) directly from the relationships already in `cleaned_metadata` — no new extraction. Isolated tables (no relationships) are omitted. New i18n key `diagram_isolated_note` (en/es).
+- **`--column` flag for `--query` mode**, paired with `--usages`/`--transitive` (calls the existing `resolver.find_column_usages()`) — closes a CLI/MCP asymmetry where column impact analysis was only reachable via `--diff-impact` or the MCP tool, not directly from `--query`. No `--column --dependencies` pairing, same reason `find_column_dependencies()` doesn't exist (see the `--diff-impact` columns entry above).
 
 ### Documentation
 

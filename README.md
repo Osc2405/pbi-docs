@@ -1,27 +1,26 @@
-## pbi-docs — AI Context Engine for Power BI Models
+# pbi-docs — AI Context Engine for Power BI Models
 
 [![PyPI](https://img.shields.io/pypi/v/pbi-docs)](https://pypi.org/project/pbi-docs/)
 [![Tests](https://github.com/Osc2405/pbi-docs/actions/workflows/tests.yml/badge.svg)](https://github.com/Osc2405/pbi-docs/actions/workflows/tests.yml)
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-green)](https://github.com/Osc2405/pbi-docs/blob/main/LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/Osc2405/pbi-docs/actions/workflows/tests.yml)
 
-**Turns a Power BI model (`.pbit` or the new `.pbip`/TMDL format) into documentation and
-context an AI agent can actually use** — human-readable Markdown, indexed JSON for LLMs/RAG, a
-query CLI, and a read-only MCP server. Zero external dependencies.
+**pbi-docs is the zero-dependency context compiler that lets any AI agent read, query, and audit
+a Power BI model** — via CLI, indexed JSON, or a read-only MCP server.
 
 **Who it's for:** data engineers documenting dashboards, consultants auditing models they didn't
 build, and anyone connecting an AI agent (Claude, GPT, Copilot) to a Power BI model's structure.
 
 ### Demo
 
-![Power BI Model](docs/images/powerbi-sample.png)
-![CLI Usage](docs/images/CLI_Usage.png)
-![AI Agent Using the Documentation](docs/images/ChatGPT-demo.gif)
+![Power BI Model](https://raw.githubusercontent.com/Osc2405/pbi-docs/main/docs/images/powerbi-sample.png)
+![CLI Usage](https://raw.githubusercontent.com/Osc2405/pbi-docs/main/docs/images/CLI_Usage.png)
+![AI Agent Using the Documentation](https://raw.githubusercontent.com/Osc2405/pbi-docs/main/docs/images/ChatGPT-demo.gif)
 
 ## Quick Start
 
-```powershell
+```bash
 pip install pbi-docs
 
 # From a .pbit file...
@@ -29,7 +28,7 @@ pbi-docs --input "data/pbit/my-model.pbit"
 # ...or a PBIP project (folder, .pbip marker, or .SemanticModel/ — auto-detected)
 pbi-docs --input "data/pbip/my-model/"
 
-Get-Content "output/my-model.pbit/model_documentation.md"
+cat "output/my-model.pbit/model_documentation.md"
 ```
 
 **Result:** 7 files in `output/<model-name>/` in seconds — human-readable Markdown, JSON/JSONL
@@ -53,8 +52,8 @@ output/my-model.pbit/          (or output/my-model/ for PBIP)
     └── ...
 ```
 
-```powershell
-Get-Content "output/my-model.pbit/model_documentation.md" | Select-Object -First 15
+```bash
+cat "output/my-model.pbit/model_documentation.md" | head -n 15
 ```
 ```markdown
 # my-model - Power BI Data Model
@@ -97,7 +96,7 @@ First measure: Revenue Budget
 | **Document 10+ dashboards fast** | Batch processing with `--batch` |
 | **Support the new PBIP format** | Full TMDL parser, auto-detected from `.pbip` or folder |
 | **Train AI agents on your models** | Indexed JSON/JSONL context, a query CLI, and an MCP server |
-| **Let an AI agent query the model live** | Read-only MCP server (`--mcp-serve`) — validated against a test harness, not yet a live MCP client, see [MCP server](docs/use-cases.md#7-mcp-server---mcp-serve) |
+| **Let an AI agent query the model live** | Read-only MCP server (`--mcp-serve`) — validated against a test harness, not yet a live MCP client, see [MCP server](https://github.com/Osc2405/pbi-docs/blob/main/docs/use-cases.md#7-mcp-server---mcp-serve) |
 | **Use it from your AI coding assistant** | Chat-invocable Skill for Claude Code + prompt file for GitHub Copilot |
 | **Actually readable DAX** | Hierarchical indentation (4x better than raw) |
 | **Compare model versions** | Content-aware `--diff`, with impact analysis (`--diff-impact`) |
@@ -109,28 +108,38 @@ First measure: Revenue Budget
 
 ## Project Status
 
-The read/context layer — PBIP/TMDL support, indexed output, query resolver, MCP server — is
-implemented and tested (222 tests). Every claim above is backed by a dated, reproducible report,
-not just asserted: see [Validation](#validation) below. Writing/editing TMDL models and PBIR/report-
-layer parsing are deliberately out of scope for now (see `CHANGELOG.md` and the
+**v1.0.0 is published on [PyPI](https://pypi.org/project/pbi-docs/).** The read/context layer —
+PBIP/TMDL support, indexed output, query resolver, MCP server, `--diff-impact`, `--export-graph` —
+is done, implemented and tested (see the Tests badge above for the current count). Every claim
+above is backed by a dated, reproducible report, not just asserted: see
+[Validation](#validation) below.
+
+**Next up:** validating with real human users that scoped context doesn't cost time or accuracy
+versus raw file dumps — the protocol is ready
+([docs/human_validation_protocol.md](https://github.com/Osc2405/pbi-docs/blob/main/docs/human_validation_protocol.md)),
+currently blocked on recruiting participants, not on code.
+
+Writing/editing TMDL models and PBIR/report-layer parsing remain deliberately out of scope (see
 [Roadmap](#roadmap) for why).
+
+*Last updated: 2026-08-02.*
 
 ## Requirements
 - Python 3.10+ (3.12 recommended)
-- Windows PowerShell (instructions include Windows commands)
+- Works on Windows, macOS, and Linux
 
 Optional: virtual environment (`venv`). No external libraries required.
 
-## Installation (Windows/PowerShell)
+## Installation
 
 Just want to run `pbi-docs`? `pip install pbi-docs` (see Quick Start above) is all you need. The
 steps below are for working on `pbi-docs` itself (editable install from a local clone).
 
-```powershell
+```bash
 # 1) Clone or download the repository
-# 2) (Optional) Create and activate virtual environment
+# 2) (Optional) Create and activate a virtual environment
 python -m venv venv
-./venv/Scripts/Activate.ps1
+source venv/bin/activate
 
 # 3) Editable installation (development)
 pip install -e .
@@ -139,11 +148,21 @@ pip install -e .
 python --version
 ```
 
+<details>
+<summary>Windows/PowerShell notes</summary>
+
+```powershell
+python -m venv venv
+./venv/Scripts/Activate.ps1
+```
+
 If PowerShell blocks activation, run as Administrator:
 
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
+
+</details>
 
 ---
 
@@ -152,12 +171,12 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ### Basic Commands
 
 **Process a `.pbit` file:**
-```powershell
+```bash
 pbi-docs --input "data/pbit/my-model.pbit"
 ```
 
 **Process a PBIP project (new in v1.0):**
-```powershell
+```bash
 # From the .pbip marker file
 pbi-docs --input "data/pbip/my-model.pbip"
 
@@ -169,64 +188,52 @@ pbi-docs --input "data/pbip/my-model/"
 ```
 
 **Specify custom output directory:**
-```powershell
+```bash
 pbi-docs -i "data/pbit/my-model.pbit" -o "my-results"
 ```
 
 **Process multiple files (batch mode — mixed formats supported):**
-```powershell
+```bash
 pbi-docs --batch "data/pbit/*.pbit"
 ```
 
-![Batch Processing](docs/images/batch-processing.png)
+![Batch Processing](https://raw.githubusercontent.com/Osc2405/pbi-docs/main/docs/images/batch-processing.png)
 
 **Compare two versions of a model (mixed `.pbit`/`.pbip` supported):**
-```powershell
+```bash
 pbi-docs --diff "data/pbit/model_v1.pbit" "data/pbip/model_v2/"
 ```
 
 **Verbose mode (more debugging information):**
-```powershell
+```bash
 pbi-docs --input "data/pbit/my-model.pbit" --verbose
 ```
 
 **Human-readable indexed output (indented JSON, for debugging — compact by default):**
-```powershell
+```bash
 pbi-docs --input "data/pbit/my-model.pbit" --pretty
 ```
 
 **Generate documentation in Spanish:**
-```powershell
+```bash
 pbi-docs --input "data/pbit/my-model.pbit" --lang es
 ```
 
 **Generate documentation in English (default):**
-```powershell
+```bash
 pbi-docs --input "data/pbit/my-model.pbit" --lang en
 # Or simply omit --lang (English is the default)
 pbi-docs --input "data/pbit/my-model.pbit"
 ```
 
-### Expected Output
-
-When running the command, you'll see messages like:
-
-```
-Processing file: data/pbit/my-model.pbit
-Schema extracted successfully: 11 tables
-Metadata processed: 11 tables, 44 measures
-Metadata saved to: output/my-model.pbit/metadata.json
-Documentation saved to: output/my-model.pbit/model_documentation.md
-Agent context saved to: output/my-model.pbit/agent_context.json
-JSONL context saved to: output/my-model.pbit/model_context.jsonl
-Processing completed successfully for: my-model.pbit
-```
+See [docs/troubleshooting.md](https://github.com/Osc2405/pbi-docs/blob/main/docs/troubleshooting.md)
+for the full expected-output walkthrough, how to verify a fresh install, and common errors.
 
 ### Important Notes
 
 - **Supported formats:** `.pbit` files (ZIP + JSON TMSL) and `.pbip` projects (TMDL folder structure). `.pbix` files must be exported to `.pbit` from Power BI Desktop (File > Export > Power BI Template).
 - **PBIP entry points:** The `--input` flag accepts a `.pbip` marker file, a `.SemanticModel/` folder, or a project root folder. Format is auto-detected.
-- **Microsoft Fabric semantic models:** Fabric uses the same TMDL format as PBIP, so compatibility is *expected* but **not empirically validated** (no real Fabric export has been tested against this parser yet) — see [docs/fabric_compatibility.md](docs/fabric_compatibility.md).
+- **Microsoft Fabric semantic models:** Fabric uses the same TMDL format as PBIP, so compatibility is *expected* but **not empirically validated** (no real Fabric export has been tested against this parser yet) — see [docs/fabric_compatibility.md](https://github.com/Osc2405/pbi-docs/blob/main/docs/fabric_compatibility.md).
 - **Language selection:** Use `--lang en` for English (default) or `--lang es` for Spanish. The language affects the generated `model_documentation.md` and `agent_context.json` files.
 - **Paths with spaces:** Use quotes around paths that contain spaces.
 - **Recommended paths:** Place your files in `data/` or `data/pbit/` to keep the project organized.
@@ -286,7 +293,7 @@ After running the command, a folder is created in `output/` with the model name.
   - Relationships table with visual representation of table connections.
   - AI Agent Usage Guide with sample questions (translated based on selected language).
 
-![Model Relationships](docs/images/Relationships.png)
+![Model Relationships](https://raw.githubusercontent.com/Osc2405/pbi-docs/main/docs/images/Relationships.png)
 
 - **`agent_context.json`**
   - Model name, totals, available tables, key measures (up to 20), temporal columns and sample questions (language depends on `--lang` flag, default: English).
@@ -319,7 +326,7 @@ By default it's written **compact** (no indentation); pass `--pretty` for indent
 
 Full field-by-field contract — top-level shape, per-table entry, the `tables/<Name>.json` JSON vs.
 TOON shapes, and the versioning policy — is documented in
-**[docs/index-json-spec.md](docs/index-json-spec.md)**.
+**[docs/index-json-spec.md](https://github.com/Osc2405/pbi-docs/blob/main/docs/index-json-spec.md)**.
 
 ---
 
@@ -330,7 +337,7 @@ TOON shapes, and the versioning policy — is documented in
 **Problem:** Your company has multiple undocumented Power BI dashboards. Analysts waste time searching for which measures to use and how tables are related.
 
 **Solution:**
-```powershell
+```bash
 # Process all dashboards in a folder (English documentation)
 pbi-docs --batch "data/dashboards/*.pbit"
 
@@ -338,7 +345,7 @@ pbi-docs --batch "data/dashboards/*.pbit"
 pbi-docs --batch "data/dashboards/*.pbit" --lang es
 ```
 
-![Batch Processing Example](docs/images/batch-processing.png)
+![Batch Processing Example](https://raw.githubusercontent.com/Osc2405/pbi-docs/main/docs/images/batch-processing.png)
 
 **Result:**
 - Each dashboard generates its own documentation in `output/[dashboard-name].pbit/`
@@ -367,7 +374,7 @@ output/
 
 **Solution:**
 1. Generate the model documentation (in your preferred language):
-```powershell
+```bash
 # English documentation (default)
 pbi-docs --input "data/pbit/my-model.pbit"
 
@@ -403,7 +410,7 @@ Agent: The "my-model" model has 11 revenue measures:
 **Problem:** You need to compare two versions of the same dashboard to identify which measures or relationships changed between releases.
 
 **Solution:**
-```powershell
+```bash
 # Compare two versions of the model
 pbi-docs --diff "data/pbit/dashboard_v1.pbit" "data/pbit/dashboard_v2.pbit"
 ```
@@ -462,7 +469,7 @@ also report which measures reference each removed/modified measure **or column**
 and what might break" in one call, connecting this diff to the resolver's `find_measure_usages()`
 and `find_column_usages()`:
 
-```powershell
+```bash
 pbi-docs --diff "data/pbit/dashboard_v1.pbit" "data/pbit/dashboard_v2.pbit" --diff-impact --transitive
 ```
 
@@ -486,18 +493,18 @@ Removed measures/columns are checked for usages in the *old* model (those refere
 modified measures/columns are checked in the *new* model (those callers may now behave
 differently). The same capability is exposed to AI agents as the `diff_impact` MCP tool (plus a
 standalone `find_column_usages` tool) — see
-[MCP server](docs/use-cases.md#7-mcp-server---mcp-serve) in docs/use-cases.md.
+[MCP server](https://github.com/Osc2405/pbi-docs/blob/main/docs/use-cases.md#7-mcp-server---mcp-serve) in docs/use-cases.md.
 
 **Want this enforced automatically before a commit lands?** See
-**[docs/pre_commit_hook.md](docs/pre_commit_hook.md)** — a reference `git` pre-commit hook
-(under [`githooks/`](githooks/)) for repos that version `.pbip`/`.pbit` models, built on exactly
+**[docs/pre_commit_hook.md](https://github.com/Osc2405/pbi-docs/blob/main/docs/pre_commit_hook.md)** — a reference `git` pre-commit hook
+(under [`githooks/`](https://github.com/Osc2405/pbi-docs/tree/main/githooks)) for repos that version `.pbip`/`.pbit` models, built on exactly
 the command above.
 
 ---
 
 More use cases — integrating with AI agents/RAG, chat-invocable Skills for Claude Code and
 GitHub Copilot, the `--query` CLI, and the `--mcp-serve` MCP server — are in
-**[docs/use-cases.md](docs/use-cases.md)**.
+**[docs/use-cases.md](https://github.com/Osc2405/pbi-docs/blob/main/docs/use-cases.md)**.
 
 ---
 
@@ -507,23 +514,23 @@ Every efficiency/correctness claim in this README is backed by a dated, reproduc
 against the real `Supply Chain Sample.pbip` fixture (not a synthetic toy model) — read these
 before taking "AI-ready" or "token-optimized" at face value:
 
-- **[docs/pbip_validation_report.md](docs/pbip_validation_report.md)** — end-to-end validation of
+- **[docs/pbip_validation_report.md](https://github.com/Osc2405/pbi-docs/blob/main/docs/pbip_validation_report.md)** — end-to-end validation of
   PBIP/TMDL extraction and both output formats against a real (non-synthetic) export; documents
   5 bugs found and fixed in the process.
-- **[docs/token_optimization_report.md](docs/token_optimization_report.md)** — measured token
+- **[docs/token_optimization_report.md](https://github.com/Osc2405/pbi-docs/blob/main/docs/token_optimization_report.md)** — measured token
   cost of raw TMDL vs pbi-docs JSON vs TOON across 3 usage scenarios, plus a table-by-table
   breakdown showing TOON is *not* a uniform win (loses on small tables).
-- **[docs/precision_validation_report.md](docs/precision_validation_report.md)** — automated
+- **[docs/precision_validation_report.md](https://github.com/Osc2405/pbi-docs/blob/main/docs/precision_validation_report.md)** — automated
   proxy for the "does scoped context sacrifice accuracy?" question: 3 isolated agents answer 18
   objectively-gradable questions using only raw TMDL / only JSON / only `--query`. JSON and
   `--query` both scored 18/18; raw TMDL scored 16/18 (the 2 misses were honest `NOT_FOUND` on a
   field TMDL doesn't contain at all, not agent error). Includes an honest caveat about total
   conversation token overhead vs. raw context-source bytes.
-- **[docs/scale_validation_report.md](docs/scale_validation_report.md)** — behavior at 60
+- **[docs/scale_validation_report.md](https://github.com/Osc2405/pbi-docs/blob/main/docs/scale_validation_report.md)** — behavior at 60
   tables/288 measures (synthetic, since no public enterprise-scale PBIP model exists): confirms
   `--index-format auto` and the resolver still hold up, and is transparent about where a fixed
   per-model cost (`index.json`) stops paying for itself at scale.
-- **[docs/human_validation_protocol.md](docs/human_validation_protocol.md)** *(protocol — not yet
+- **[docs/human_validation_protocol.md](https://github.com/Osc2405/pbi-docs/blob/main/docs/human_validation_protocol.md)** *(protocol — not yet
   executed)* — the planned human-subject experiment for validating that scoped context doesn't
   cost real users time or accuracy versus raw file dumps.
 
@@ -533,7 +540,7 @@ before taking "AI-ready" or "token-optimized" at face value:
 
 The formatter now generates **hierarchical indentation** that reflects the logical structure of expressions:
 
-![DAX Formatting](docs/images/DAX.png)
+![DAX Formatting](https://raw.githubusercontent.com/Osc2405/pbi-docs/main/docs/images/DAX.png)
 
 ### Before (unformatted):
 ```dax
@@ -563,76 +570,8 @@ CALCULATE(
 
 ## Troubleshooting
 
-### Common Errors
-
-**Error decoding `DataModelSchema`**: 
-- The script tries `utf-8`, `utf-16` and `latin-1`, plus removes comments/trailing commas. 
-- If it fails, `schema_snippet.txt` is saved in the output folder for diagnosis.
-
-**Paths with spaces/special characters**: 
-- Use quotes in the CLI: `pbi-docs -i "data/My File.pbit"`
-- Prefer paths within `data/`.
-
-**No documentation generated**: 
-- Verify that the file contains `DataModelSchema`. 
-- If you're using `.pbix`, export to `.pbit` from Power BI Desktop (File > Export > Power BI Template).
-
-**PowerShell blocks venv activation**: 
-- Adjust the `ExecutionPolicy` as indicated in installation.
-
-### Verify Installation
-
-Run a quick test with your .pbit file:
-
-```powershell
-pbi-docs --input "data/pbit/my-model.pbit"
-```
-
-**Expected output:**
-```
-Processing file: data/pbit/my-model.pbit
-Schema extracted successfully: 11 tables
-Metadata processed: 11 tables, 44 measures
-Metadata saved to: output/my-model.pbit/metadata.json
-Documentation saved to: output/my-model.pbit/model_documentation.md
-Agent context saved to: output/my-model.pbit/agent_context.json
-JSONL context saved to: output/my-model.pbit/model_context.jsonl
-Processing completed successfully for: my-model.pbit
-```
-
-Then verify that the files were generated correctly:
-
-```powershell
-# List generated files
-Get-ChildItem "output/my-model.pbit/"
-
-# View a summary of the documentation
-Get-Content "output/my-model.pbit/model_documentation.md" | Select-Object -First 10
-```
-
-### Common Installation Issues
-
-**Error: "Python not recognized"**
-```powershell
-# Add Python to PATH or use full path
-C:\Python312\python.exe -m pip install -e .
-```
-
-**Error: "No module named..."**
-This project requires no dependencies. If you see this error, verify your Python version:
-```powershell
-python --version  # Must be 3.10+
-```
-
-**Error: "pbi-docs not recognized"**
-```powershell
-# Reinstall the package
-pip install pbi-docs
-# Editable/dev install instead
-pip install -e .
-# Or use python -m
-python -m pbi_extractor.cli --input file.pbit
-```
+Common errors, how to verify a fresh install, and installation issues are in
+[docs/troubleshooting.md](https://github.com/Osc2405/pbi-docs/blob/main/docs/troubleshooting.md).
 
 ---
 
@@ -658,123 +597,93 @@ competing.
 
 ## Generated Documentation Example
 
-<details>
-<summary>View complete example of model_documentation.md (my-model)</summary>
-
-```markdown
-# my-model - Power BI Data Model
-
-**Generated:** 2025-12-22 14:23:29
-
-## Tables and Measures
-
-### Fact *(Hidden Table - Measures Only)*
-
-**Measures:**
-
-##### Revenue Measures
-
-**Total Revenue** *(simple)*
-
-```dax
-SUM([Revenue])
-```
-
-*Format:* `$#,0;($#,0);$#,0`
+Full example of a generated `model_documentation.md`:
+[docs/example_output.md](https://github.com/Osc2405/pbi-docs/blob/main/docs/example_output.md).
 
 ---
 
-**YTD Revenue** *(simple)*
+## FAQ
 
-```dax
-TOTALYTD(
-    SUM([Revenue]),
-    'Date'[Date])
-```
+### What is pbi-docs?
+pbi-docs is a zero-dependency Python tool that turns a Power BI semantic model
+(`.pbit` or the new `.pbip`/TMDL format) into documentation and structured context
+that an AI agent can query — Markdown for humans, indexed JSON/JSONL for LLMs and RAG,
+a query CLI, and a read-only MCP server.
 
-*Format:* `$#,0;($#,0);$#,0`
+### How do I give Claude, Copilot, or ChatGPT context about my Power BI model?
+Run `pbi-docs --input my-model.pbip` to generate the context files, then either upload
+`model_documentation.md` to your AI assistant, point an agent at the indexed JSON via
+`--query`, or connect an agent directly through the read-only MCP server with `--mcp-serve`.
 
----
+### Does pbi-docs support the new PBIP / TMDL format?
+Yes. pbi-docs ships a dedicated TMDL parser (not a regex over JSON) that reads `.pbip`
+projects, `.SemanticModel/` folders, and `.pbit` templates, auto-detecting the format.
 
-**Revenue SPLY** *(medium)*
+### Does it work with Microsoft Fabric semantic models?
+Fabric uses the same TMDL format as PBIP, so compatibility is *expected* — but this has
+not yet been validated against a real Fabric export. See [docs/fabric_compatibility.md](https://github.com/Osc2405/pbi-docs/blob/main/docs/fabric_compatibility.md).
 
-```dax
-CALCULATE(
-    [Total Revenue],
-    SAMEPERIODLASTYEAR(
-    'Date'[Date]))
-```
+### How is pbi-docs different from Tabular Editor or DAX Studio?
+Those are interactive desktop tools for editing and querying models. pbi-docs is a
+read-only, scriptable context layer: it never modifies your model, has zero .NET/desktop
+dependencies, installs with `pip`, and produces LLM-ready output. It's complementary to
+Microsoft's own Power BI MCP servers (Modeling MCP for writes, Remote MCP for DAX execution).
 
-*Format:* `$#,0;($#,0);$#,0`
+### Does pbi-docs modify my model?
+No. It is strictly read-only — it compiles context and audits changes, never authors or
+edits TMDL.
 
-##### Margin Measures
+### What does the MCP server do?
+It exposes your processed model to an AI agent as queryable tools (list tables, get a
+table's measures, search measures, dependency/impact analysis, version diff) over the
+standard MCP protocol — so the agent pulls exactly what it needs instead of ingesting the
+whole model.
 
-**Gross Margin** *(simple)*
-
-```dax
-[Total Revenue]-[Total COGS]
-```
-
-*Format:* `$#,0;($#,0);$#,0`
-
-##### Percentage Measures
-
-**GM%** *(simple)*
-
-```dax
-DIVIDE(
-    [Gross Margin],
-    [Total Revenue])
-```
-
-*Format:* `0.0 %;-0.0 %;0.0 %`
-
-### Date
-
-**Columns:**
-
-| Column | Type | Category |
-|--------|------|----------|
-| `Date` | dateTime | temporal |
-| `Year` | int64 | numeric |
-| `Month` | string | categorical |
-
-### Customer
-
-**Columns:**
-
-| Column | Type | Category |
-|--------|------|----------|
-| `Name` | string | descriptive |
-| `City` | string | categorical |
-| `State` | string | categorical |
-| `Country/Region` | string | categorical |
-
-## Relationships
-
-| From | To | Type | Direction |
-|------|----|----- |-----------|
-| Fact.BU Key | BU.BU Key | many:one | OneDirection |
-| Fact.YearPeriod | Date.YearPeriod | many:one | OneDirection |
-| Fact.Customer Key | Customer.Customer | many:one | OneDirection |
-```
-
-</details>
+### Does it reduce token usage?
+Yes, measurably — with the honest caveat that savings depend on model size and query type,
+and can invert at large scale for some scenarios. The headline scenario totals in
+[docs/token_optimization_report.md](https://github.com/Osc2405/pbi-docs/blob/main/docs/token_optimization_report.md) are backed by a real
+tokenizer (Gemini's `count_tokens`), not just estimated; some of its finer-grained,
+table-by-table breakdowns and the 60-table scale test in
+[docs/scale_validation_report.md](https://github.com/Osc2405/pbi-docs/blob/main/docs/scale_validation_report.md) still use the standard
+chars÷4 approximation, labeled as such everywhere it applies — see [Validation](#validation)
+for the full picture, including where the approximation and the real count disagree.
 
 ---
 
 ## Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow, or use
+Contributions are welcome! See [CONTRIBUTING.md](https://github.com/Osc2405/pbi-docs/blob/main/CONTRIBUTING.md) for the workflow, or use
 [GitHub Issues](https://github.com/Osc2405/pbi-docs/issues) for bug reports and feature requests.
+
+---
+
+## Help shape pbi-docs
+
+Using it on a real model? A 5-minute report of what worked (or didn't) directly guides the
+roadmap → [share your experience](https://github.com/Osc2405/pbi-docs/issues/new?template=share_your_experience.md).
 
 ---
 
 ## Roadmap
 
-The read/context layer (PBIP/TMDL support, indexed output, query resolver, MCP server) is done.
-Writing TMDL models and PBIR/report parsing are deliberately deferred — bigger undertakings, and
-(for writing) Microsoft's own Modeling MCP already covers that space.
+**Done (v1.0.0, read/context layer):** PBIP/TMDL parsing, indexed output (JSON/TOON), query
+resolver + `--query` CLI, read-only MCP server, content-aware `--diff` with impact analysis
+(measures and columns), `--export-graph`, a Mermaid ER diagram embedded in the generated docs.
+Full history in [CHANGELOG.md](https://github.com/Osc2405/pbi-docs/blob/main/CHANGELOG.md).
+
+**Next:** validating with real human users (see [Project Status](#project-status) above) — the
+one step between "the numbers look good" and "this actually helps people," and the signal that
+would justify expanding scope below.
+
+**Deliberately deferred, pending that signal:**
+- **Writing/editing TMDL models** — safely writing TMDL back (preserving formatting, comments,
+  lineage tags, merges) is substantially riskier than reading, and Microsoft's own Modeling MCP
+  already covers that space.
+- **PBIR/report-layer parsing** (pages, visuals, bookmarks) — a different problem from documenting
+  the data model, out of scope for now.
+
+*Last updated: 2026-08-02.*
 
 ---
 

@@ -507,6 +507,63 @@ Suite completa: 321 tests, todos en verde.
 
 ---
 
+### Actualización 2026-08-02 — Validación de estado + flag `--column`
+
+Sesión de auditoría a pedido del usuario: validar el estado real del proyecto contra lo que
+documentan las notas de planeación (`Pruebas/brainstorm_features_2026-07-29.md`, `NEXT_STEPS.md`,
+`Pruebas/deuda_tecnica_por_etapa.md`), ejecutar los pendientes que no requieran su intervención, y
+refrescar esa documentación para que el día de hoy quede reflejado con precisión.
+
+**Hallazgo principal, de proceso, no de código:** `Pruebas/brainstorm_features_2026-07-29.md`
+había quedado desincronizado del código real. El commit `639af70` (2026-07-31, la misma sesión que
+cerró las Fases 1-5) ya había ejecutado el "barrido rápido de deuda" que el propio brainstorm
+proponía como paso 1 (CI matrix a Python 3.10-3.13, fix `--search-measures ""` con `is not None`,
+borrado del código muerto en `formatters.py`, limpieza de imports `typing`, imports mixtos en
+`processor.py`) — pero nunca se volvió a marcar en las secciones de detalle (§2.1/§2.2/§2.3/§2.6)
+ni en la matriz de prioridad (§4) de ese documento, que seguían listando los 5 ítems como
+pendientes (🔴/🟡). Verificado uno por uno directamente contra el código actual (grep +
+`git log -S`), no asumido desde el texto viejo. **`NEXT_STEPS.md` y este mismo `Pruebas/deuda_tecnica_por_etapa.md`
+(Fase 1) sí tenían el estado correcto** — la desincronización fue específica del brainstorm, no
+generalizada a toda la documentación de planeación. Corregido con notas de verificación inline en
+el propio documento (no se reescribió el histórico, mismo criterio que ya usa ese archivo en su
+§2.7).
+
+**Cerrado, único cambio de código de la sesión:** flag `--column` para `--query`, combinado con
+`--usages`/`--transitive` — llama a `resolver.find_column_usages()` (ya implementada desde la Fase
+2, 2026-07-31), que hasta ahora solo era alcanzable vía `--diff --diff-impact` o la tool MCP, no
+directamente desde `--query` en el CLI, a diferencia de `--measure`/`--usages`. Sigue exactamente
+el patrón ya existente en `_run_query()` (`pbi_extractor/cli.py`); no hay `--column --dependencies`
+por la misma razón que no existe `find_column_dependencies()` (una columna no tiene expresión DAX
+propia). 1 test nuevo (`test_cli_query_column_usages` en `tests/test_resolver.py`, mismo patrón
+`_run_cli()` que ya cubre `--measure`/`--usages`/`--dependencies`), **322 tests, todos en verde**.
+Verificado también manualmente contra el modelo real: `pbi-docs --query "output/Sales Sample"
+--table "Sales" --column "Quantity" --usages` devuelve las 4 measures reales que referencian esa
+columna (`Sales Qty`, `Sales Amount`, `Margin`, `Cost`).
+
+**Dejado pendiente por decisión explícita del usuario** (confirmado vía AskUserQuestion, no
+asumido): decomponer `process_file()` en `cli.py` (~102 líneas, 6 responsabilidades) y unificar
+`print(f"Warning: ...")` → `logging` en `processor.py` — ambos ya identificados como deuda real en
+la auditoría del 2026-07-24 y reafirmados como abiertos en la Fase 1 de
+`Pruebas/deuda_tecnica_por_etapa.md`. Se evaluó explícitamente incluirlos en esta pasada (ambos
+cubiertos por los 322 tests como red de seguridad) pero el usuario prefirió no asumir el cambio de
+comportamiento observable/estructura interna sin una señal más concreta de que valga el riesgo
+ahora. Quedan igual que antes de esta sesión, no es que se hayan vuelto a olvidar.
+
+**Documentación actualizada** (además de `CLAUDE.md`): `Pruebas/brainstorm_features_2026-07-29.md`
+(correcciones §2.1/§2.2/§2.3/§2.6, matriz §4, nueva fila `--column`, paso 8 en §5),
+`NEXT_STEPS.md` (paso 7 nuevo, conteo de tests), `Pruebas/deuda_tecnica_por_etapa.md` (Fase 6
+nueva), `docs/use-cases.md` (ejemplo de `--column --usages`), `CHANGELOG.md` (entrada
+`[Unreleased]`), y `docs/Analisis_Posicionamiento_Comparativa_Plan_Futuro.md` (nota al inicio
+apuntando aquí + refresco de las tablas de Horizonte 1-3 marcando ítems cerrados y anotando el
+segundo dato de proxy con Gemini, sin reescribir el análisis de fondo — secciones 1-2, 5, 6, 7 no
+cambian).
+
+No se tocó código de producción más allá del flag `--column` — sin cambios en `processor.py`,
+`resolver.py`, `formatters.py` (los 3 archivos donde el brainstorm creía que había deuda pendiente
+ya estaban limpios).
+
+---
+
 ## 0. Contexto del proyecto (no re-investigar, ya validado)
 
 `pbi-docs` es un extractor y documentador de modelos de Power BI, 100% Python, cero dependencias

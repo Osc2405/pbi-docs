@@ -83,6 +83,7 @@ pbi-docs --query output/my-model --table "Sales" --measure "Total Sales"       #
 pbi-docs --query output/my-model --search-measures "revenue"                   # cross-table measure search
 pbi-docs --query output/my-model --search-columns "customer"                   # cross-table column search
 pbi-docs --query output/my-model --relationships --table "Sales"               # relationships touching a table
+pbi-docs --query output/my-model --table "Sales" --column "SalesAmount" --usages  # column impact analysis
 ```
 
 Each prints JSON to stdout. This is the same query layer the two Skills above use, and what the

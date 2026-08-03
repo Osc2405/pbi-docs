@@ -192,6 +192,9 @@ def _run_query(args) -> int:
         elif args.table and args.measure and args.dependencies:
             result = resolver.get_measure_dependencies(args.query, args.table, args.measure,
                                                         transitive=args.transitive)
+        elif args.table and args.column and args.usages:
+            result = resolver.find_column_usages(args.query, args.table, args.column,
+                                                  transitive=args.transitive)
         elif args.table and args.measure and args.usages:
             result = resolver.find_measure_usages(args.query, args.table, args.measure,
                                                    transitive=args.transitive)
@@ -213,7 +216,7 @@ def _run_query(args) -> int:
             result = graph
         else:
             logger.error("--query requires one of: --list-tables, --table, --search-measures, "
-                        "--search-columns, --relationships, --dependencies, --usages, "
+                        "--search-columns, --relationships, --dependencies, --usages, --column, "
                         "--export-graph")
             return 1
 
@@ -249,6 +252,7 @@ Usage examples:
   %(prog)s --query output/my-model --relationships --table "Sales"
   %(prog)s --query output/my-model --table "Sales" --measure "Margin %%" --dependencies
   %(prog)s --query output/my-model --table "Sales" --measure "Sales Amount" --usages
+  %(prog)s --query output/my-model --table "Sales" --column "SalesAmount" --usages
   %(prog)s --query output/my-model --export-graph              # Node/edge JSON graph
   %(prog)s --query output/my-model --export-graph graphml > model.graphml
   %(prog)s --mcp-serve output/my-model                # Run a read-only MCP server (stdio)
@@ -326,6 +330,10 @@ Usage examples:
     parser.add_argument("--table", type=str, metavar="NAME", help="Query mode: get one table's detail")
     parser.add_argument("--measure", type=str, metavar="NAME",
                         help="Query mode: combine with --table to get one measure's full record")
+    parser.add_argument("--column", type=str, metavar="NAME",
+                        help="Query mode: combine with --table and --usages to find what "
+                             "references it (impact analysis; no --dependencies counterpart — "
+                             "a column has no DAX expression of its own)")
     parser.add_argument("--search-measures", type=str, metavar="QUERY",
                         dest="search_measures", help="Query mode: find measures by name substring")
     parser.add_argument("--search-columns", type=str, metavar="QUERY",

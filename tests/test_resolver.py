@@ -589,6 +589,14 @@ def test_cli_query_usages(json_dir):
     assert payload == find_measure_usages(json_dir, "Sales", "Total Sales")
 
 
+def test_cli_query_column_usages(json_dir):
+    result = _run_cli("--query", str(json_dir), "--table", "Sales",
+                       "--column", "SalesAmount", "--usages")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload == find_column_usages(json_dir, "Sales", "SalesAmount")
+
+
 # ---------------------------------------------------------------------------
 # load_metadata — used by diff.py's model_dir-based wrappers (diff_with_impact)
 # ---------------------------------------------------------------------------
