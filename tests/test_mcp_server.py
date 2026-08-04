@@ -94,18 +94,19 @@ def test_initialize_response_shape(model_dir):
     s = ServerSession(model_dir)
     resp = s.request("initialize", {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "t", "version": "0"}})
     assert resp["result"]["protocolVersion"] == "2025-06-18"
-    assert resp["result"]["serverInfo"]["name"] == "pbi-docs"
+    assert resp["result"]["serverInfo"]["name"] == "pbi-context"
     assert "tools" in resp["result"]["capabilities"]
     s.close()
 
 
-def test_tools_list_has_nine_tools(session):
+def test_tools_list_has_ten_tools(session):
     resp = session.request("tools/list")
     tools = resp["result"]["tools"]
     names = {t["name"] for t in tools}
     assert names == {"list_tables", "get_table", "get_measure",
                       "search_measures", "search_columns", "get_relationships",
-                      "get_measure_dependencies", "find_measure_usages", "diff_impact"}
+                      "get_measure_dependencies", "find_measure_usages",
+                      "find_column_usages", "diff_impact"}
     for t in tools:
         assert "description" in t
         assert t["inputSchema"]["type"] == "object"
@@ -172,6 +173,19 @@ def test_tools_call_find_measure_usages_transitive(session, model_dir):
                               {"table_name": "Sales", "measure_name": "Total Sales", "transitive": True})
     payload = json.loads(resp["result"]["content"][0]["text"])
     assert payload == resolver.find_measure_usages(model_dir, "Sales", "Total Sales", transitive=True)
+
+
+def test_tools_call_find_column_usages_matches_resolver(session, model_dir):
+    resp = session.call_tool("find_column_usages", {"table_name": "Sales", "column_name": "SalesAmount"})
+    payload = json.loads(resp["result"]["content"][0]["text"])
+    assert payload == resolver.find_column_usages(model_dir, "Sales", "SalesAmount")
+
+
+def test_tools_call_find_column_usages_transitive(session, model_dir):
+    resp = session.call_tool("find_column_usages",
+                              {"table_name": "Sales", "column_name": "SalesAmount", "transitive": True})
+    payload = json.loads(resp["result"]["content"][0]["text"])
+    assert payload == resolver.find_column_usages(model_dir, "Sales", "SalesAmount", transitive=True)
 
 
 def test_tools_call_unknown_table_is_error_not_crash(session):

@@ -4,7 +4,7 @@ Includes advanced regex, multiline blocks and intelligent indentation.
 """
 
 import re
-from typing import Any, List, Tuple
+from typing import Any
 
 
 def clean_dax_expression(expression: Any) -> str:
@@ -23,125 +23,6 @@ def clean_dax_expression(expression: Any) -> str:
     cleaned = "\n".join(cleaned_lines)
     cleaned = re.sub(r"[ \t]+", " ", cleaned)
     return cleaned
-
-
-def _tokenize_dax(expression: str) -> List[str]:
-    """Tokenizes a DAX expression for advanced analysis."""
-    # Patterns for different token types
-    patterns = [
-        (r'\b(IF|SWITCH|CALCULATE|SUM|COUNT|AVERAGE|MAX|MIN|DISTINCTCOUNT|FILTER|ALL|VALUES|HASONEVALUE|ISBLANK|BLANK|IFERROR|COALESCE)\b', 'FUNCTION'),
-        (r'\b(AND|OR|NOT|TRUE|FALSE)\b', 'LOGICAL'),
-        (r'\b(YEAR|MONTH|DAY|DATE|TODAY|NOW|EDATE|EOMONTH)\b', 'DATE'),
-        (r'[+\-*/=<>!]+', 'OPERATOR'),
-        (r'[(),]', 'PUNCTUATION'),
-        (r'\[[^\]]+\]', 'COLUMN'),
-        (r'\b\d+(\.\d+)?\b', 'NUMBER'),
-        (r'"[^"]*"', 'STRING'),
-        (r'\s+', 'WHITESPACE'),
-        (r'[a-zA-Z_][a-zA-Z0-9_]*', 'IDENTIFIER')
-    ]
-    
-    tokens = []
-    pos = 0
-    
-    while pos < len(expression):
-        matched = False
-        for pattern, token_type in patterns:
-            match = re.match(pattern, expression[pos:])
-            if match:
-                tokens.append((match.group(), token_type))
-                pos += len(match.group())
-                matched = True
-                break
-        
-        if not matched:
-            tokens.append((expression[pos], 'UNKNOWN'))
-            pos += 1
-    
-    return tokens
-
-
-def _format_multiline_dax(tokens: List[Tuple[str, str]]) -> str:
-    """Formats DAX tokens into multiline blocks with intelligent indentation."""
-    result = []
-    indent_level = 0
-    indent_size = 4
-    
-    i = 0
-    while i < len(tokens):
-        token, token_type = tokens[i]
-        
-        if token_type == 'FUNCTION':
-            # Main functions that require new line
-            if token in ['IF', 'SWITCH', 'CALCULATE', 'FILTER']:
-                result.append('\n' + ' ' * indent_level + token)
-                indent_level += indent_size
-                # Find the opening parenthesis
-                i += 1
-                while i < len(tokens) and tokens[i][0] != '(':
-                    result.append(tokens[i][0])
-                    i += 1
-                if i < len(tokens):
-                    result.append('(')
-                    i += 1
-                    # DO NOT add new line here - let the first argument be processed normally
-            else:
-                result.append(token)
-        elif token_type == 'PUNCTUATION':
-            if token == '(':
-                result.append(token)
-                # Only add new line if it's not the first parenthesis after a complex function
-                if i > 0 and tokens[i-1][1] == 'FUNCTION' and tokens[i-1][0] not in ['IF', 'SWITCH', 'CALCULATE', 'FILTER']:
-                    result.append('\n' + ' ' * indent_level)
-            elif token == ')':
-                indent_level = max(0, indent_level - indent_size)
-                result.append('\n' + ' ' * indent_level + token)
-            elif token == ',':
-                result.append(token)
-                result.append('\n' + ' ' * indent_level)
-            else:
-                result.append(token)
-        elif token_type == 'OPERATOR':
-            if token in ['+', '-', '*', '/']:
-                result.append('\n' + ' ' * indent_level + token + ' ')
-            else:
-                result.append(token)
-        elif token_type == 'WHITESPACE':
-            # Only add space if we're not on a new line
-            if result and not result[-1].endswith('\n'):
-                result.append(' ')
-        else:
-            result.append(token)
-        
-        i += 1
-    
-    return ''.join(result)
-
-
-def _clean_multiline_format(formatted: str) -> str:
-    """Cleans multiline format by removing unnecessary spaces."""
-    lines = formatted.split('\n')
-    cleaned_lines = []
-    
-    for line in lines:
-        # Remove trailing spaces from each line
-        cleaned_line = line.rstrip()
-        
-        # Only add non-empty lines or lines with significant content
-        if cleaned_line or (cleaned_lines and cleaned_lines[-1].strip()):
-            cleaned_lines.append(cleaned_line)
-    
-    # Remove consecutive empty lines
-    final_lines = []
-    prev_empty = False
-    
-    for line in cleaned_lines:
-        is_empty = not line.strip()
-        if not is_empty or not prev_empty:
-            final_lines.append(line)
-        prev_empty = is_empty
-    
-    return '\n'.join(final_lines)
 
 
 def format_dax_expression(expression: str) -> str:

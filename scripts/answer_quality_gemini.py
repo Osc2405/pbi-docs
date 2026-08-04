@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Answer-quality experiment: does pbi-docs's compressed context let a real LLM
+Answer-quality experiment: does pbi-context's compressed context let a real LLM
 answer business questions correctly, not just save tokens?
 
 Runs the same 20-question set from docs/human_validation_protocol.md section 5
 (canonical structured copy: scripts/fixtures/sales_sample_questions.json)
 against the Gemini API under 3 conditions:
     A - raw TMDL          (files_test/Sales Sample.SemanticModel/definition/)
-    B - pbi-docs JSON      (output/Sales Sample/ - full dump)
+    B - pbi-context JSON      (output/Sales Sample/ - full dump)
     C - Gemini function calling against pbi_extractor.resolver (Gemini decides
         which tools to call - list_tables/get_table/get_measure/search_measures/
         search_columns/get_relationships/get_measure_dependencies/find_measure_usages)
@@ -399,7 +399,7 @@ def main() -> int:
         from google import genai
     except ImportError:
         print(
-            "This script needs the 'google-genai' package, not a pbi-docs dependency.\n"
+            "This script needs the 'google-genai' package, not a pbi-context dependency.\n"
             "Run: pip install google-genai",
             file=sys.stderr,
         )

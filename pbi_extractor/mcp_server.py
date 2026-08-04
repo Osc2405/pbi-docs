@@ -140,12 +140,29 @@ TOOLS = [
         },
     },
     {
+        "name": "find_column_usages",
+        "description": "Impact analysis: which measures reference this column in their DAX "
+                        "expression. One level deep by default. Use for 'what breaks if I remove "
+                        "this column' style questions.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "table_name": {"type": "string"},
+                "column_name": {"type": "string"},
+                "transitive": {"type": "boolean",
+                               "description": "Follow the chain and return everything downstream "
+                                              "(default false: direct references only)"},
+            },
+            "required": ["table_name", "column_name"],
+        },
+    },
+    {
         "name": "diff_impact",
         "description": "Compare the bound model against another already-processed model "
                         "directory: added/removed/modified measures, columns, relationships, "
                         "plus impact analysis (which measures reference each removed/modified "
-                        "measure). Use for 'what changed and what might break' after editing a "
-                        "model. Both directories must already be processed by pbi-docs.",
+                        "measure or column). Use for 'what changed and what might break' after "
+                        "editing a model. Both directories must already be processed by pbi-context.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -180,6 +197,8 @@ _DISPATCH = {
         model_dir, a["table_name"], a["measure_name"], transitive=a.get("transitive", False)),
     "find_measure_usages": lambda model_dir, a: resolver.find_measure_usages(
         model_dir, a["table_name"], a["measure_name"], transitive=a.get("transitive", False)),
+    "find_column_usages": lambda model_dir, a: resolver.find_column_usages(
+        model_dir, a["table_name"], a["column_name"], transitive=a.get("transitive", False)),
     "diff_impact": lambda model_dir, a: (
         diff.diff_with_impact(a["other_model_dir"], model_dir, transitive=a.get("transitive", False))
         if a.get("other_is_before", True)
@@ -203,7 +222,7 @@ def _handle(model_dir: Path, msg: dict) -> Optional[dict]:
             "result": {
                 "protocolVersion": PROTOCOL_VERSION,
                 "capabilities": {"tools": {}},
-                "serverInfo": {"name": "pbi-docs", "version": __version__},
+                "serverInfo": {"name": "pbi-context", "version": __version__},
             },
         }
 
@@ -247,7 +266,7 @@ def run(model_dir: Path) -> None:
     logging.basicConfig(stream=sys.stderr, level=logging.INFO,
                         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     model_dir = Path(model_dir)
-    logger.info(f"pbi-docs MCP server starting, bound to: {model_dir}")
+    logger.info(f"pbi-context MCP server starting, bound to: {model_dir}")
     if hasattr(sys.stdin, "reconfigure"):
         sys.stdin.reconfigure(encoding="utf-8", errors="replace")
     for line in sys.stdin:

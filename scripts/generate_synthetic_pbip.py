@@ -14,7 +14,7 @@ same ~10-table teaching model already in files_test/Sales Sample, since PBIP
 is a recent format and the classic large sample databases only exist as
 .bak/.bim/.pbix, not as TMDL folders). This generator produces a star-schema
 model at a scale no public sample currently offers, purely to measure
-pbi-docs's own behavior (timing, index.json size, TOON threshold) — it says
+pbi-context's own behavior (timing, index.json size, TOON threshold) — it says
 nothing about parsing real-world DAX authoring quirks, which is what an
 actual production model would exercise instead.
 

@@ -5,8 +5,10 @@ Includes robust validations and error handling.
 
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List
 from .extractor import PBITExtractionError
+from .categorizer import is_technical_table, get_column_category, categorize_measure
+from .formatters import clean_dax_expression, format_dax_expression
 
 
 class ProcessingError(PBITExtractionError):
@@ -67,7 +69,6 @@ def validate_relationship_structure(rel: dict, rel_index: int) -> None:
 def safe_get_column_category(data_type: str, name: str) -> str:
     """Gets the category of a column safely."""
     try:
-        from .categorizer import get_column_category
         return get_column_category(data_type, name)
     except Exception as e:
         print(f"Warning: Error categorizing column '{name}': {e}")
@@ -77,7 +78,6 @@ def safe_get_column_category(data_type: str, name: str) -> str:
 def safe_categorize_measure(name: str, expression: str) -> str:
     """Categorizes a measure safely."""
     try:
-        from .categorizer import categorize_measure
         return categorize_measure(name, expression)
     except Exception as e:
         print(f"Warning: Error categorizing measure '{name}': {e}")
@@ -87,7 +87,6 @@ def safe_categorize_measure(name: str, expression: str) -> str:
 def safe_clean_dax(expression: str, measure_name: str) -> str:
     """Cleans a DAX expression safely."""
     try:
-        from .formatters import clean_dax_expression
         return clean_dax_expression(expression)
     except Exception as e:
         print(f"Warning: Error cleaning DAX for measure '{measure_name}': {e}")
@@ -97,15 +96,10 @@ def safe_clean_dax(expression: str, measure_name: str) -> str:
 def safe_format_dax(expression: str, measure_name: str) -> str:
     """Formats a DAX expression safely."""
     try:
-        from .formatters import format_dax_expression
         return format_dax_expression(expression)
     except Exception as e:
         print(f"Warning: Error formatting DAX for measure '{measure_name}': {e}")
         return expression
-
-
-from .categorizer import is_technical_table
-from .formatters import clean_dax_expression, format_dax_expression
 
 
 def process_schema(schema: dict, input_file: str) -> dict:

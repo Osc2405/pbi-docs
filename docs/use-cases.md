@@ -1,7 +1,7 @@
 # Additional Use Cases: AI Agent & Automation Integrations
 
 See the main [README](../README.md#use-cases) for the first three use cases (dashboard
-documentation, analyst onboarding, model auditing). These four cover integrating pbi-docs output
+documentation, analyst onboarding, model auditing). These four cover integrating pbi-context output
 into AI agents, chat assistants, and automation.
 
 ### 4. Integration with AI Agents and RAG
@@ -53,8 +53,8 @@ Type: relationship, Title: Relationship: Fact -> Date
 **Problem:** You want to ask an AI coding assistant questions about a Power BI model without
 manually running the CLI and pasting file contents into chat.
 
-**Solution:** pbi-docs ships two chat-invocable skills that run the extractor and then query the
-model on demand via `pbi-docs --query` (see below) instead of dumping whole files into context:
+**Solution:** pbi-context ships two chat-invocable skills that run the extractor and then query the
+model on demand via `pbi-context --query` (see below) instead of dumping whole files into context:
 
 - **Claude Code:** `.claude/skills/analyze-pbi-model/` — copy this folder into your own project's
   `.claude/skills/` (or work from inside this repo), then ask `/analyze-pbi-model <path>` or just
@@ -76,13 +76,14 @@ whether the output was generated as `--index-format json` or `toon`.
 `--query`:
 
 ```bash
-pbi-docs --query output/my-model --list-tables                                 # table summaries
-pbi-docs --query output/my-model --list-tables --category revenue              # filtered
-pbi-docs --query output/my-model --table "Sales"                               # one table, full detail
-pbi-docs --query output/my-model --table "Sales" --measure "Total Sales"       # one measure, full record
-pbi-docs --query output/my-model --search-measures "revenue"                   # cross-table measure search
-pbi-docs --query output/my-model --search-columns "customer"                   # cross-table column search
-pbi-docs --query output/my-model --relationships --table "Sales"               # relationships touching a table
+pbi-context --query output/my-model --list-tables                                 # table summaries
+pbi-context --query output/my-model --list-tables --category revenue              # filtered
+pbi-context --query output/my-model --table "Sales"                               # one table, full detail
+pbi-context --query output/my-model --table "Sales" --measure "Total Sales"       # one measure, full record
+pbi-context --query output/my-model --search-measures "revenue"                   # cross-table measure search
+pbi-context --query output/my-model --search-columns "customer"                   # cross-table column search
+pbi-context --query output/my-model --relationships --table "Sales"               # relationships touching a table
+pbi-context --query output/my-model --table "Sales" --column "SalesAmount" --usages  # column impact analysis
 ```
 
 Each prints JSON to stdout. This is the same query layer the two Skills above use, and what the
@@ -97,14 +98,15 @@ query a Power BI model directly as tools, not through a Skill's file-reading ins
 stable spec (`2025-06-18`, newline-delimited JSON-RPC 2.0 over stdio). No `mcp` SDK dependency:
 that package pulls in pydantic/anyio/httpx/starlette/uvicorn, which would break this project's
 zero-dependency stance. One server instance is bound to one already-processed model directory,
-exposing 9 tools — thin wrappers around `resolver.py`/`diff.py`: `list_tables`, `get_table`,
+exposing 10 tools — thin wrappers around `resolver.py`/`diff.py`: `list_tables`, `get_table`,
 `get_measure`, `search_measures`, `search_columns`, `get_relationships`,
-`get_measure_dependencies`, `find_measure_usages`, and `diff_impact` (compare against another
-already-processed model directory and report which measures depend on each removed/modified
-measure — "what changed and what might break" for an agent auditing an edit).
+`get_measure_dependencies`, `find_measure_usages`, `find_column_usages`, and `diff_impact`
+(compare against another already-processed model directory and report which measures depend on
+each removed/modified measure or column — "what changed and what might break" for an agent
+auditing an edit).
 
 ```bash
-pbi-docs --mcp-serve output/my-model
+pbi-context --mcp-serve output/my-model
 ```
 
 Configure it in your client's MCP settings (e.g. `claude_desktop_config.json` or Claude Code's
@@ -113,7 +115,7 @@ Configure it in your client's MCP settings (e.g. `claude_desktop_config.json` or
 ```json
 {
   "mcpServers": {
-    "pbi-docs": {
+    "pbi-context": {
       "type": "stdio",
       "command": "python",
       "args": ["-m", "pbi_extractor.mcp_server", "output/my-model"]
@@ -129,19 +131,41 @@ This is deliberately read-only (no DAX execution, no model editing) — it's a c
 complementary to Microsoft's Modeling MCP (writes) and Remote MCP (executes DAX), not a
 replacement for either.
 
-**This repo ships its own `.mcp.json`** (project root) pointing at the `Supply Chain Sample`
+**This repo ships its own `.mcp.json`** (project root) pointing at the `Sales Sample`
 validation fixture — a dev/demo convenience for testing `mcp_server.py` itself against a real
 MCP client, not a template end users need (real usage is the config above, pointed at your own
 processed model). To verify it against Claude Code:
 
-1. Process the fixture first: `pbi-docs -i "files_test/Supply Chain Sample.pbip" -o output`.
+1. Process the fixture first: `pbi-context -i "files_test/Sales Sample.pbip" -o output`.
 2. Restart/reload Claude Code in this project (or open a fresh session here) — project-scoped
    `.mcp.json` servers require a session (re)start to be picked up.
-3. Run `/mcp` — `pbi-docs` shows as `⏸ Pending approval` the first time; approve it.
-4. Run `/mcp` again — should show connected, 9 tools.
+3. Run `/mcp` — `pbi-context` shows as `⏸ Pending approval` the first time; approve it.
+4. Run `/mcp` again — should show connected, 10 tools.
 5. Ask something like *"what tables does this Power BI model have"* — Claude should call
-   `mcp__pbi-docs__list_tables` directly (visible in the transcript), not read any file.
+   `mcp__pbi-context__list_tables` directly (visible in the transcript), not read any file.
 
 This last step is the one thing about the MCP server that automated tests
 (`tests/test_mcp_server.py`) can't cover — they prove protocol correctness against a harness I
 wrote myself, not that a real client actually discovers and calls the tools.
+
+### 8. Exporting the relationship graph (`--export-graph`)
+
+**Problem:** You want to visualize how a model's tables connect — in Gephi, yEd, or a Python/JS
+graph library — instead of reading `relationships.json` by hand.
+
+**Solution:** `--export-graph` (a `--query` mode flag, like `--dependencies`/`--usages`) projects
+`list_tables()`/`get_relationships()` to a generic `{"nodes": [...], "edges": [...]}` graph — every
+table is a node (including isolated ones with no relationships, unlike the Mermaid diagram in
+`model_documentation.md`, which omits them for readability), every relationship is a directed edge
+(`from_table -> to_table`, same direction used throughout the codebase).
+
+```bash
+pbi-context --query output/my-model --export-graph               # JSON node/edge lists (default)
+pbi-context --query output/my-model --export-graph graphml > model.graphml   # GraphML XML
+```
+
+GraphML has no scalar attribute type for lists, so a table's `categories` (an array in the JSON
+output) is flattened to a comma-joined string in GraphML only — a documented format difference,
+not a bug. Not exposed as an MCP tool: an agent that already has `list_tables`/`get_relationships`
+as tools can reconstruct the same information without a GraphML/XML blob in its context (see
+`CLAUDE.md` section 4).

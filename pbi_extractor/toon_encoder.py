@@ -18,7 +18,7 @@ Apply ONLY to uniform arrays (columns, relationships, flat measures).
 Never apply to DAX expressions, free-text fields, or nested/variable structures.
 """
 
-from typing import Any, List
+from typing import List
 
 
 def encode_toon(records: List[dict], fields: List[str]) -> dict:

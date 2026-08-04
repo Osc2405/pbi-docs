@@ -186,7 +186,7 @@ def test_relationship_is_active_change():
 # ---------------------------------------------------------------------------
 
 def _write_model_dir(tmp_path, name, meta):
-    """Write a minimal but real pbi-docs output dir (tables/*.json +
+    """Write a minimal but real pbi-context output dir (tables/*.json +
     metadata.json) so resolver.find_measure_usages() can be pointed at it."""
     model_dir = tmp_path / name
     model_dir.mkdir()
@@ -269,3 +269,68 @@ def test_diff_with_impact_matches_manual_composition(tmp_path):
     manual = diff_models(meta_a, meta_b)
     manual.update(diff_impact(manual, model_dir_a, model_dir_b))
     assert combined == manual
+
+
+# ---------------------------------------------------------------------------
+# diff_impact — column impact (mirrors the measure-impact tests above).
+# _measure()'s default expression is "SUM(Sales[Amount])", so a "Total Sales"
+# measure directly references Sales[Amount] with no extra setup.
+# ---------------------------------------------------------------------------
+
+def test_diff_impact_removed_column_reports_usages_from_old_model(tmp_path):
+    meta_a = _meta(tables=[_table("Sales",
+        columns=[_column("Amount")],
+        measures=[_measure("Total Sales")],
+    )])
+    meta_b = _meta(tables=[_table("Sales",
+        columns=[],
+        measures=[_measure("Total Sales")],
+    )])
+    model_dir_a = _write_model_dir(tmp_path, "a", meta_a)
+    model_dir_b = _write_model_dir(tmp_path, "b", meta_b)
+
+    diff = diff_models(meta_a, meta_b)
+    assert diff["columns_removed"] == [("Sales", "Amount")]
+
+    impact = diff_impact(diff, model_dir_a, model_dir_b)
+    assert impact["columns_removed_impact"] == [
+        {"table": "Sales", "name": "Amount",
+         "used_by": [{"table": "Sales", "name": "Total Sales"}]}
+    ]
+    assert impact["columns_modified_impact"] == []
+
+
+def test_diff_impact_modified_column_reports_usages_from_new_model(tmp_path):
+    meta_a = _meta(tables=[_table("Sales",
+        columns=[_column("Amount", data_type="decimal")],
+        measures=[_measure("Total Sales")],
+    )])
+    meta_b = _meta(tables=[_table("Sales",
+        columns=[_column("Amount", data_type="string")],
+        measures=[_measure("Total Sales")],
+    )])
+    model_dir_a = _write_model_dir(tmp_path, "a", meta_a)
+    model_dir_b = _write_model_dir(tmp_path, "b", meta_b)
+
+    diff = diff_models(meta_a, meta_b)
+    assert len(diff["columns_modified"]) == 1
+
+    impact = diff_impact(diff, model_dir_a, model_dir_b)
+    assert impact["columns_modified_impact"] == [
+        {"table": "Sales", "name": "Amount",
+         "used_by": [{"table": "Sales", "name": "Total Sales"}]}
+    ]
+    assert impact["columns_removed_impact"] == []
+
+
+def test_diff_impact_column_with_no_usages_is_empty_list(tmp_path):
+    meta_a = _meta(tables=[_table("Sales", columns=[_column("Unused")])])
+    meta_b = _meta(tables=[_table("Sales", columns=[])])
+    model_dir_a = _write_model_dir(tmp_path, "a", meta_a)
+    model_dir_b = _write_model_dir(tmp_path, "b", meta_b)
+
+    diff = diff_models(meta_a, meta_b)
+    impact = diff_impact(diff, model_dir_a, model_dir_b)
+    assert impact["columns_removed_impact"] == [
+        {"table": "Sales", "name": "Unused", "used_by": []}
+    ]

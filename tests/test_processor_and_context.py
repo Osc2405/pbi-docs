@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pbi_extractor.processor import process_schema
 from pbi_extractor.jsonl_generator import generate_model_context
-from pbi_extractor.documentation import generate_markdown, build_agent_context
+from pbi_extractor.documentation import generate_markdown, build_agent_context, generate_mermaid_er
 
 
 def _minimal_schema():
@@ -191,5 +191,83 @@ def test_generate_model_context_jsonl_entries():
     # Model overview consistent with summary
     model_entry = next(e for e in entries if e["type"] == "model")
     assert model_entry["summary"]["total_measures"] == 1
+
+
+# ---------------------------------------------------------------------------
+# generate_mermaid_er
+# ---------------------------------------------------------------------------
+
+def _rel(from_table="Sales", from_column="CustomerID", to_table="Customer",
+         to_column="CustomerID", cardinality="many:one", is_active=True):
+    return {
+        "name": f"{from_table}_{to_table}",
+        "from_table": from_table, "from_column": from_column,
+        "to_table": to_table, "to_column": to_column,
+        "cardinality": cardinality, "cross_filtering": "OneDirection",
+        "is_active": is_active,
+    }
+
+
+def test_generate_mermaid_er_no_relationships_is_empty():
+    assert generate_mermaid_er({"relationships": []}) == ""
+
+
+def test_generate_mermaid_er_many_to_one_active():
+    diagram = generate_mermaid_er({"relationships": [_rel()]})
+    assert diagram.splitlines()[0] == "erDiagram"
+    assert 'Sales }o--|| Customer : "CustomerID to CustomerID"' in diagram
+
+
+def test_generate_mermaid_er_inactive_uses_dotted_line():
+    diagram = generate_mermaid_er({"relationships": [_rel(is_active=False)]})
+    assert "}o..||" in diagram
+    assert "}o--||" not in diagram
+
+
+def test_generate_mermaid_er_many_to_many():
+    diagram = generate_mermaid_er({"relationships": [_rel(cardinality="many:many")]})
+    assert "}o--o{" in diagram
+
+
+def test_generate_mermaid_er_one_to_one():
+    diagram = generate_mermaid_er({"relationships": [_rel(cardinality="one:one")]})
+    assert "||--||" in diagram
+
+
+def test_generate_mermaid_er_sanitizes_table_names_with_spaces():
+    diagram = generate_mermaid_er({"relationships": [_rel(from_table="Date Table")]})
+    assert "Date_Table" in diagram
+    assert "Date Table" not in diagram
+
+
+def test_generate_markdown_embeds_mermaid_diagram_in_relationships_section():
+    schema = _minimal_schema()
+    metadata = process_schema(schema, "SalesModel.pbit")
+    md = generate_markdown(metadata)
+
+    rel_section = md.split("## Relationships", 1)[1]
+    assert "```mermaid" in rel_section
+    assert "erDiagram" in rel_section
+    assert rel_section.index("```mermaid") < rel_section.index("| From |")
+
+
+def test_generate_markdown_no_diagram_when_no_relationships():
+    schema = _minimal_schema()
+    schema["model"]["relationships"] = []
+    metadata = process_schema(schema, "SalesModel.pbit")
+    md = generate_markdown(metadata)
+
+    assert "```mermaid" not in md
+    assert "## Relationships" not in md  # section itself is guarded by `if relationships:`
+
+
+def test_generate_markdown_spanish_embeds_mermaid_diagram():
+    schema = _minimal_schema()
+    metadata = process_schema(schema, "SalesModel.pbit")
+    md = generate_markdown(metadata, lang="es")
+
+    rel_section = md.split("## Relaciones", 1)[1]
+    assert "```mermaid" in rel_section
+    assert "erDiagram" in rel_section
 
 

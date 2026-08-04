@@ -1,7 +1,7 @@
 # `index.json` — open format specification
 
 `index.json` is a small, stable contract meant to be consumed directly by any tool — not just
-pbi-docs' own CLI/resolver/MCP server. This section documents it so other parsers can be built
+pbi-context' own CLI/resolver/MCP server. This section documents it so other parsers can be built
 against it without reading `pbi_extractor` source.
 
 By default, `index.json`, `tables/*.json`, and `relationships.json` are written **compact** (no
@@ -118,3 +118,11 @@ want a reference implementation in ~30 lines.
 `version: "1"` today. Any change that breaks a consumer reading the shapes above (renaming a
 field, changing `tables[]` entry keys, changing what `format`/`index_format` can contain) must
 bump this value. Additive changes (a new optional field) don't require a bump.
+
+## Formal schema
+
+The shape above is also captured as a JSON Schema (draft 2020-12):
+[`docs/index.schema.json`](index.schema.json). It covers `index.json` only, not `tables/*.json` or
+`relationships.json` (both of which vary shape based on TOON vs. plain JSON — `index.json` itself
+never does). `tests/test_indexed_output.py` validates real `build_index()` output against it, so
+the schema can't silently drift from the actual generated shape.

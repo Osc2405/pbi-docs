@@ -179,6 +179,36 @@ def test_default_output_is_compact(tmp_path, metadata):
         assert ": " not in raw and ", " not in raw, f"{rel} should have no spaces after separators"
 
 
+# ---------------------------------------------------------------------------
+# docs/index.schema.json — formal JSON Schema validation. Guards against the
+# schema drifting from what build_index() actually produces (prose alone,
+# docs/index-json-spec.md, can't catch that automatically).
+# ---------------------------------------------------------------------------
+
+SCHEMA_PATH = Path(__file__).parent.parent / "docs" / "index.schema.json"
+
+
+@pytest.fixture(scope="module")
+def index_schema():
+    with open(SCHEMA_PATH, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def test_build_index_matches_formal_schema_json_format(metadata, index_schema):
+    import jsonschema
+    jsonschema.validate(build_index(metadata, "pbip", index_format="json"), index_schema)
+
+
+def test_build_index_matches_formal_schema_toon_format(metadata, index_schema):
+    import jsonschema
+    jsonschema.validate(build_index(metadata, "pbip", index_format="toon"), index_schema)
+
+
+def test_build_index_matches_formal_schema_auto_format(metadata, index_schema):
+    import jsonschema
+    jsonschema.validate(build_index(metadata, "pbip", index_format="auto"), index_schema)
+
+
 def test_pretty_flag_restores_indentation(tmp_path, metadata):
     write_indexed_output(metadata, tmp_path, "pbip", pretty=True)
     for rel in _INDEXED_OUTPUT_FILES:

@@ -120,11 +120,32 @@ def test_has_breaking_impact_true_for_modified():
     assert hook._has_breaking_impact(diff) is True
 
 
+def test_has_breaking_impact_true_for_removed_column():
+    diff = {
+        "measures_removed_impact": [], "measures_modified_impact": [],
+        "columns_removed_impact": [
+            {"table": "Sales", "name": "SalesAmount",
+             "used_by": [{"table": "Sales", "name": "Total Sales"}]}
+        ],
+        "columns_modified_impact": [],
+    }
+    assert hook._has_breaking_impact(diff) is True
+
+
+def test_has_breaking_impact_false_when_column_used_by_empty():
+    diff = {
+        "measures_removed_impact": [], "measures_modified_impact": [],
+        "columns_removed_impact": [{"table": "Sales", "name": "Unused", "used_by": []}],
+        "columns_modified_impact": [],
+    }
+    assert hook._has_breaking_impact(diff) is False
+
+
 # ---------------------------------------------------------------------------
 # main() short-circuit behavior (in-process, monkeypatched — no real repo)
 # ---------------------------------------------------------------------------
 
-def test_main_skips_pbi_docs_lookup_when_nothing_staged(monkeypatch, tmp_path):
+def test_main_skips_pbi_context_lookup_when_nothing_staged(monkeypatch, tmp_path):
     monkeypatch.setattr(subprocess, "run",
                          lambda *a, **k: subprocess.CompletedProcess(a, 0, stdout=str(tmp_path), stderr=""))
     monkeypatch.setattr(hook, "_staged_paths", lambda repo_root: ["README.md"])
@@ -133,24 +154,24 @@ def test_main_skips_pbi_docs_lookup_when_nothing_staged(monkeypatch, tmp_path):
     def _spy():
         called["n"] += 1
         return None
-    monkeypatch.setattr(hook, "_find_pbi_docs_cmd", _spy)
+    monkeypatch.setattr(hook, "_find_pbi_context_cmd", _spy)
 
     assert hook.main() == 0
-    assert called["n"] == 0, "pbi-docs lookup must not happen when nothing pbip/pbit-shaped is staged"
+    assert called["n"] == 0, "pbi-context lookup must not happen when nothing pbip/pbit-shaped is staged"
 
 
-def test_main_fails_open_when_pbi_docs_not_found(monkeypatch, tmp_path, capsys):
+def test_main_fails_open_when_pbi_context_not_found(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(subprocess, "run",
                          lambda *a, **k: subprocess.CompletedProcess(a, 0, stdout=str(tmp_path), stderr=""))
     monkeypatch.setattr(hook, "_staged_paths", lambda repo_root: ["MyModel.pbit"])
-    monkeypatch.setattr(hook, "_find_pbi_docs_cmd", lambda: None)
+    monkeypatch.setattr(hook, "_find_pbi_context_cmd", lambda: None)
 
     assert hook.main() == 0
     assert "not runnable" in capsys.readouterr().out
 
 
 # ---------------------------------------------------------------------------
-# End-to-end: real temp git repo, real pbi-docs subprocess call
+# End-to-end: real temp git repo, real pbi-context subprocess call
 # ---------------------------------------------------------------------------
 
 def _init_repo(tmp_path: Path) -> Path:
@@ -236,6 +257,31 @@ def test_hook_allows_brand_new_project(tmp_path):
     result = _run_hook(repo)
 
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_hook_blocks_commit_that_breaks_a_dependent_column(committed_repo):
+    """Removing the column definition without touching 'Total Sales' DAX
+    (still SUM(Sales[SalesAmount])) is exactly the case measures_removed_impact
+    can't catch — it's a column removal, not a measure removal."""
+    repo, sm_dir = committed_repo
+    sales_tmdl = sm_dir / "definition" / "tables" / "Sales.tmdl"
+    text = sales_tmdl.read_text(encoding="utf-8")
+    assert "column SalesAmount" in text
+    text = text.replace(
+        "\tcolumn SalesAmount\n"
+        "\t\tdataType: decimal\n"
+        "\t\tformatString: $#,0.###;($#,0.###)\n"
+        "\t\tsourceColumn: SalesAmount\n\n",
+        "",
+    )
+    sales_tmdl.write_text(text, encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+
+    result = _run_hook(repo)
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "SalesAmount" in result.stdout
+    assert "Total Sales" in result.stdout
 
 
 def test_hook_noop_when_nothing_pbip_staged(committed_repo):

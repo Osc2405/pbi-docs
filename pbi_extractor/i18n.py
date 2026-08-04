@@ -1,5 +1,5 @@
 """
-Internationalization support for pbi-docs.
+Internationalization support for pbi-context.
 Provides translations for documentation strings.
 """
 
@@ -26,6 +26,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "from": "From",
         "to": "To",
         "direction": "Direction",
+        "diagram_isolated_note": "Diagram below shows tables with at least one relationship; isolated tables are omitted.",
         "ai_agent_usage_guide": "AI Agent Usage Guide",
         "usage_guide_description": "This document describes a Power BI data model. You can use this information to:",
         "usage_guide_1": "Answer business questions about available data",
@@ -86,6 +87,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "from": "Desde",
         "to": "Hacia",
         "direction": "Dirección",
+        "diagram_isolated_note": "El diagrama muestra las tablas con al menos una relación; las tablas aisladas se omiten.",
         "ai_agent_usage_guide": "Guía de Uso para Agentes de IA",
         "usage_guide_description": "Este documento describe un modelo de datos de Power BI. Puedes usar esta información para:",
         "usage_guide_1": "Responder preguntas de negocio sobre los datos disponibles",

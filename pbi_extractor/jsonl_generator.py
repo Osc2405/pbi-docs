@@ -4,7 +4,7 @@ Format optimized for embeddings and retrieval-augmented-generation.
 """
 
 import json
-from typing import Dict, List
+from typing import List
 from .formatters import format_dax_for_json, categorize_dax_complexity
 
 
