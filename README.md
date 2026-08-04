@@ -12,12 +12,6 @@ a Power BI model** — via CLI, indexed JSON, or a read-only MCP server.
 **Who it's for:** data engineers documenting dashboards, consultants auditing models they didn't
 build, and anyone connecting an AI agent (Claude, GPT, Copilot) to a Power BI model's structure.
 
-### Demo
-
-![Power BI Model](https://raw.githubusercontent.com/Osc2405/pbi-context/main/docs/images/powerbi-sample.png)
-![CLI Usage](https://raw.githubusercontent.com/Osc2405/pbi-context/main/docs/images/CLI_Usage.png)
-![AI Agent Using the Documentation](https://raw.githubusercontent.com/Osc2405/pbi-context/main/docs/images/ChatGPT-demo.gif)
-
 ## Quick Start
 
 ```bash
@@ -202,8 +196,6 @@ pbi-context -i "data/pbit/my-model.pbit" -o "my-results"
 pbi-context --batch "data/pbit/*.pbit"
 ```
 
-![Batch Processing](https://raw.githubusercontent.com/Osc2405/pbi-context/main/docs/images/batch-processing.png)
-
 **Compare two versions of a model (mixed `.pbit`/`.pbip` supported):**
 ```bash
 pbi-context --diff "data/pbit/model_v1.pbit" "data/pbip/model_v2/"
@@ -298,8 +290,6 @@ After running the command, a folder is created in `output/` with the model name.
   - Relationships table with visual representation of table connections.
   - AI Agent Usage Guide with sample questions (translated based on selected language).
 
-![Model Relationships](https://raw.githubusercontent.com/Osc2405/pbi-context/main/docs/images/Relationships.png)
-
 - **`agent_context.json`**
   - Model name, totals, available tables, key measures (up to 20), temporal columns and sample questions (language depends on `--lang` flag, default: English).
 
@@ -349,8 +339,6 @@ pbi-context --batch "data/dashboards/*.pbit"
 # Or generate Spanish documentation for all dashboards
 pbi-context --batch "data/dashboards/*.pbit" --lang es
 ```
-
-![Batch Processing Example](https://raw.githubusercontent.com/Osc2405/pbi-context/main/docs/images/batch-processing.png)
 
 **Result:**
 - Each dashboard generates its own documentation in `output/[dashboard-name].pbit/`
@@ -544,8 +532,6 @@ before taking "AI-ready" or "token-optimized" at face value:
 ## DAX Formatting Example
 
 The formatter now generates **hierarchical indentation** that reflects the logical structure of expressions:
-
-![DAX Formatting](https://raw.githubusercontent.com/Osc2405/pbi-context/main/docs/images/DAX.png)
 
 ### Before (unformatted):
 ```dax
